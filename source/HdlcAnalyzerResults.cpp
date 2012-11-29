@@ -28,6 +28,7 @@ void HdlcAnalyzerResults::GenerateBubbleText( U64 frame_index, Channel& channel,
 
 void HdlcAnalyzerResults::GenerateExportFile( const char* file, DisplayBase display_base, U32 export_type_user_id )
 {
+	/*
 	std::ofstream file_stream( file, std::ios::out );
 
 	U64 trigger_sample = mAnalyzer->GetTriggerSample();
@@ -56,10 +57,12 @@ void HdlcAnalyzerResults::GenerateExportFile( const char* file, DisplayBase disp
 	}
 
 	file_stream.close();
+	*/
 }
 
 void HdlcAnalyzerResults::GenerateFrameTabularText( U64 frame_index, DisplayBase display_base )
 {
+	
 	Frame frame = GetFrame( frame_index );
 	ClearResultStrings();
 

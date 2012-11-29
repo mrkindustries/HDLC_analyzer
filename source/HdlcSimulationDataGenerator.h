@@ -18,12 +18,7 @@ protected:
 	HdlcAnalyzerSettings* mSettings;
 	U32 mSimulationSampleRateHz;
 
-protected:
-	void CreateSerialByte();
-	std::string mSerialText;
-	U32 mStringIndex;
-
-	SimulationChannelDescriptor mSerialSimulationData;
+	SimulationChannelDescriptor mHdlcSimulationData;
 
 };
 #endif //HDLC_SIMULATION_DATA_GENERATOR
