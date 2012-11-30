@@ -39,7 +39,7 @@ U32 HdlcSimulationDataGenerator::GenerateSimulationData( U64 largest_sample_requ
 
 	U8 value=0;
 	U16 size=0;
-	U8 dataValue=0;
+	U8 informationValue=0;
 	U64 addressBytes=1;
 	U8 controlValue=0;
 	U64 idxFrames=0;
@@ -54,9 +54,9 @@ U32 HdlcSimulationDataGenerator::GenerateSimulationData( U64 largest_sample_requ
 		
 		vector<U8> address = GenAddressField(mSettings->mHdlcAddr, addressBytes, 0x00);
 		vector<U8> control = GenControlField(frameTypes[idxFrames++%3], mSettings->mHdlcControl, controlValue++);
-		vector<U8> data = GenDataField(size++, dataValue++);
+		vector<U8> information = GenInformationField(size++, informationValue++);
 		
-		CreateHDLCFrame( address, control, data );
+		CreateHDLCFrame( address, control, information );
 		
 		// Two consecutive flags
 		CreateFlagSequence();
@@ -127,20 +127,20 @@ vector<U8> HdlcSimulationDataGenerator::GenControlField( HdlcFrameType frameType
 	return controlRet;
 }
 	
-vector<U8> HdlcSimulationDataGenerator::GenDataField( U16 size, U8 value ) 
+vector<U8> HdlcSimulationDataGenerator::GenInformationField( U16 size, U8 value ) 
 {
-	vector<U8> dataRet(size, value);
-	return dataRet;
+	vector<U8> informationRet(size, value);
+	return informationRet;
 }
 
 void HdlcSimulationDataGenerator::CreateHDLCFrame( const vector<U8> & address, const vector<U8> & control, 
-												   const vector<U8> & data )
+												   const vector<U8> & information )
 {
 	vector<U8> allFields; 
 	
 	allFields.insert(allFields.end(), address.begin(), address.end());
 	allFields.insert(allFields.end(), control.begin(), control.end());
-	allFields.insert(allFields.end(), data.begin(), data.end());
+	allFields.insert(allFields.end(), information.begin(), information.end());
 	
 	// Calculate the crc of the address, control and data fields
 	vector<U8> fcs = GenFcs(mSettings->mHdlcFcs, allFields);

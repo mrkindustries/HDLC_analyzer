@@ -20,7 +20,14 @@ public:
 	virtual void GenerateTransactionTabularText( U64 transaction_id, DisplayBase display_base );
 
 protected: //functions
-
+	void GenBubbleText( U64 frame_index, DisplayBase display_base, bool tabular );
+	
+	void GenFlagFieldString( bool tabular );
+	void GenAddressFieldString( const Frame & frame, DisplayBase display_base, bool tabular );
+	void GenControlFieldString( const Frame & frame, DisplayBase display_base, bool tabular );
+	void GenInformationFieldString( const Frame & frame, DisplayBase display_base, bool tabular );
+	void GenFcsFieldString( const Frame & frame, DisplayBase display_base, bool tabular );
+	
 protected:  //vars
 	HdlcAnalyzerSettings* mSettings;
 	HdlcAnalyzer* mAnalyzer;

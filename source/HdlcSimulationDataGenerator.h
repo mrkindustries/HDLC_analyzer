@@ -21,7 +21,7 @@ protected:
 	
 	U64 SecondsToSamples( U64 us ) const;
 
-	void CreateHDLCFrame( const vector<U8> & address, const vector<U8> & control, const vector<U8> & data );
+	void CreateHDLCFrame( const vector<U8> & address, const vector<U8> & control, const vector<U8> & information );
 	
 	void CreateFlagSequence();
 	void Transmit( const vector<U8> & stream );
@@ -34,7 +34,7 @@ protected:
 	
 	vector<U8> GenAddressField( HdlcAddressType addressType, U64 addressBytes, U8 value );
 	vector<U8> GenControlField( HdlcFrameType frameType, HdlcControlType controlType, U8 value );
-	vector<U8> GenDataField( U16 size, U8 value );
+	vector<U8> GenInformationField( U16 size, U8 value );
 
 	U64 mSamplesInHalfPeriod;
 	
