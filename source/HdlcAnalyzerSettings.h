@@ -11,8 +11,12 @@
 //    * HDLC Field == Saleae Logic Frame
 //    * HDLC transactions not supported
 
+// enum for the inner frames of HDLC frame (address, control, data, fcs, etc)
+enum HdlcFieldType { HDLC_FIELD_FLAG = 0, HDLC_FIELD_ADDRESS, 
+					 HDLC_FIELD_CONTROL, HDLC_FIELD_DATA, 
+					 HDLC_FIELD_FCS };
 // enum for the types of HDLC frames (Information, Supervisory and Unnumbered)
-enum HdlcFrameType { HDLC_I_FRAME = 0, HDLC_S_FRAME, HDLC_U_FRAME };
+enum HdlcFrameType { HDLC_I_FRAME = 0, HDLC_S_FRAME = 1, HDLC_U_FRAME = 3 };
 // enum for the Control field size
 // enum to support the Address Field of more than 1 byte
 enum HdlcAddressType { HDLC_BASIC_ADDRESS_FIELD = 0, HDLC_EXTENDED_ADDRESS_FIELD };
