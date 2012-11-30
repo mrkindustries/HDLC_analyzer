@@ -19,18 +19,14 @@ public:
 	virtual const char* GetAnalyzerName() const;
 	virtual bool NeedsRerun();
 
-protected: //vars
+protected:
 	std::auto_ptr< HdlcAnalyzerSettings > mSettings;
 	std::auto_ptr< HdlcAnalyzerResults > mResults;
-	AnalyzerChannelData* mSerial;
+	AnalyzerChannelData* mHdlc;
 
 	HdlcSimulationDataGenerator mSimulationDataGenerator;
 	bool mSimulationInitilized;
 
-	//Serial analysis vars:
-	U32 mSampleRateHz;
-	U32 mStartOfStopBitOffset;
-	U32 mEndOfStopBitOffset;
 };
 
 extern "C" ANALYZER_EXPORT const char* __cdecl GetAnalyzerName();

@@ -20,7 +20,10 @@ void HdlcAnalyzer::WorkerThread()
 	mResults.reset( new HdlcAnalyzerResults( this, mSettings.get() ) );
 	SetAnalyzerResults( mResults.get() );
 	mResults->AddChannelBubblesWillAppearOn( mSettings->mInputChannel );
-
+	mHdlc = GetAnalyzerChannelData( mSettings->mInputChannel );
+	
+	/*
+	
 	mSampleRateHz = GetSampleRate();
 
 	mSerial = GetAnalyzerChannelData( mSettings->mInputChannel );
@@ -67,6 +70,7 @@ void HdlcAnalyzer::WorkerThread()
 		mResults->CommitResults();
 		ReportProgress( frame.mEndingSampleInclusive );
 	}
+	*/
 }
 
 bool HdlcAnalyzer::NeedsRerun()
@@ -92,12 +96,12 @@ U32 HdlcAnalyzer::GetMinimumSampleRateHz()
 
 const char* HdlcAnalyzer::GetAnalyzerName() const
 {
-	return "HDLC";
+	return "Hdlc";
 }
 
 const char* GetAnalyzerName()
 {
-	return "HDLC";
+	return "Hdlc";
 }
 
 Analyzer* CreateAnalyzer()
