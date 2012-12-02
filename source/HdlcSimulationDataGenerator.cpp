@@ -1,7 +1,7 @@
 #include "HdlcSimulationDataGenerator.h"
 #include "HdlcAnalyzerSettings.h"
-
 #include <AnalyzerHelpers.h>
+#include <cstdlib>
 
 HdlcSimulationDataGenerator::HdlcSimulationDataGenerator()
 {
@@ -20,17 +20,16 @@ void HdlcSimulationDataGenerator::Initialize( U32 simulation_sample_rate, HdlcAn
 	mHdlcSimulationData.SetSampleRate( simulation_sample_rate );
 	mHdlcSimulationData.SetInitialBitState( BIT_LOW );
 	
-	double halfPeriod = 1.0 / double( mSettings->mBitRate * 2 ); // half period in seconds.
-	mSamplesInHalfPeriod = SecondsToSamples( halfPeriod );		 // number of samples in a half period.
-	mHdlcSimulationData.Advance( mSamplesInHalfPeriod * 8 );	 // Advance 4 periods
+	double halfPeriod = (1.0 / double( mSettings->mBitRate * 2 )) * 1000000.0; 	// half period in useconds.
+	mSamplesInHalfPeriod = USecsToSamples( halfPeriod );		 				// number of samples in a half period.
 	
-	mPfBitValue = true;
+	mHdlcSimulationData.Advance( mSamplesInHalfPeriod * 8 );	 				// Advance 4 periods
 	
 }
 
-U64 HdlcSimulationDataGenerator::SecondsToSamples( U64 us ) const
+U64 HdlcSimulationDataGenerator::USecsToSamples( U64 us ) const
 {
-	return ( mSimulationSampleRateHz * us );
+	return ( mSimulationSampleRateHz * us ) / 1000000;
 }
 
 U32 HdlcSimulationDataGenerator::GenerateSimulationData( U64 largest_sample_requested, U32 sample_rate, SimulationChannelDescriptor** simulation_channel )
@@ -47,30 +46,41 @@ U32 HdlcSimulationDataGenerator::GenerateSimulationData( U64 largest_sample_requ
 	
 	while( mHdlcSimulationData.GetCurrentSampleNumber() < adjusted_largest_sample_requested )
 	{
-		
 		// Two consecutive flags
-		CreateFlagSequence();
-		CreateFlagSequence();
+		CreateFlag();
+		CreateFlag();
 		
 		vector<U8> address = GenAddressField(mSettings->mHdlcAddr, addressBytes, 0x00);
 		vector<U8> control = GenControlField(frameTypes[idxFrames++%3], mSettings->mHdlcControl, controlValue++);
-		vector<U8> information = GenInformationField(size++, informationValue++);
+		vector<U8> information = GenInformationField(/*size++*/ 8, informationValue++);
 		
 		CreateHDLCFrame( address, control, information );
 		
 		// Two consecutive flags
-		CreateFlagSequence();
-		CreateFlagSequence();
-		
+		CreateFlag();
+		CreateFlag();
 	}
 	
 	*simulation_channel = &mHdlcSimulationData;
 	return 1;
 }
 
+void HdlcSimulationDataGenerator::CreateFlag() 
+{
+	if( mSettings->mTransmissionMode == HDLC_TRANSMISSION_BIT_SYNC ) 
+	{
+		CreateFlagBitSeq();
+	}
+	else // HDLC_TRANSMISSION_BYTE_ASYNC
+	{
+		CreateAsyncByte( HDLC_FLAG_VALUE );
+	}
+}
+		
+
 vector<U8> HdlcSimulationDataGenerator::GenAddressField( HdlcAddressType addressType, 
 														 U64 addressBytes, 
-														 U8 value )
+														 U8 value ) const
 {
 	vector<U8> addrRet;
 	if( addressType == HDLC_BASIC_ADDRESS_FIELD ) 
@@ -91,7 +101,7 @@ vector<U8> HdlcSimulationDataGenerator::GenAddressField( HdlcAddressType address
 // TODO read ISO/IEC 13239:2002(E) pag. 26
 vector<U8> HdlcSimulationDataGenerator::GenControlField( HdlcFrameType frameType, 
 														 HdlcControlType controlType, 
-														 U8 value ) 
+														 U8 value ) const
 {
 	vector<U8> controlRet;
 	switch( frameType ) 
@@ -127,7 +137,7 @@ vector<U8> HdlcSimulationDataGenerator::GenControlField( HdlcFrameType frameType
 	return controlRet;
 }
 	
-vector<U8> HdlcSimulationDataGenerator::GenInformationField( U16 size, U8 value ) 
+vector<U8> HdlcSimulationDataGenerator::GenInformationField( U16 size, U8 value ) const
 {
 	vector<U8> informationRet(size, value);
 	return informationRet;
@@ -146,12 +156,18 @@ void HdlcSimulationDataGenerator::CreateHDLCFrame( const vector<U8> & address, c
 	vector<U8> fcs = GenFcs(mSettings->mHdlcFcs, allFields);
 	allFields.insert(allFields.end(), fcs.begin(), fcs.end());
 	
-	CreateFlagSequence();
-	Transmit(allFields);	
-	CreateFlagSequence();
+	// Transmit the frame in bit-sync or byte-async
+	if( mSettings->mTransmissionMode == HDLC_TRANSMISSION_BIT_SYNC )
+	{
+		TransmitBitSync(allFields);
+	}
+	else
+	{
+		TransmitByteAsync(allFields);
+	}
 }
 
-vector<U8> HdlcSimulationDataGenerator::GenFcs( HdlcFcsType fcsType, const vector<U8> & stream ) 
+vector<U8> HdlcSimulationDataGenerator::GenFcs( HdlcFcsType fcsType, const vector<U8> & stream ) const
 {
 	vector<U8> crcRet;
 	switch(fcsType) 
@@ -169,21 +185,21 @@ vector<U8> HdlcSimulationDataGenerator::GenFcs( HdlcFcsType fcsType, const vecto
 	return crcRet;
 }
 
-vector<U8> HdlcSimulationDataGenerator::Crc8( const vector<U8> & stream ) 
+vector<U8> HdlcSimulationDataGenerator::Crc8( const vector<U8> & stream ) const
 {
 	vector<U8> crc8Ret(1, 0);
 	// TODO
 	return crc8Ret;
 }
 
-vector<U8> HdlcSimulationDataGenerator::Crc16( const vector<U8> & stream ) 
+vector<U8> HdlcSimulationDataGenerator::Crc16( const vector<U8> & stream ) const
 {
 	vector<U8> crc16Ret(2, 0);
 	// TODO
 	return crc16Ret;
 }
 
-vector<U8> HdlcSimulationDataGenerator::Crc32( const vector<U8> & stream ) 
+vector<U8> HdlcSimulationDataGenerator::Crc32( const vector<U8> & stream ) const
 {
 	vector<U8> crc32Ret(4, 0);
 	// TODO
@@ -191,8 +207,11 @@ vector<U8> HdlcSimulationDataGenerator::Crc32( const vector<U8> & stream )
 
 }
 
-void HdlcSimulationDataGenerator::Transmit( const vector<U8> & stream ) 
+void HdlcSimulationDataGenerator::TransmitBitSync( const vector<U8> & stream ) 
 {
+	// Opening flag
+	CreateFlagBitSeq();
+	
 	U8 consecutiveOnes = 0;
 	BitState previousBit = BIT_LOW;
 	// For each byte of the stream
@@ -206,7 +225,7 @@ void HdlcSimulationDataGenerator::Transmit( const vector<U8> & stream )
 			
 			if( consecutiveOnes == 5 ) // if five 1s in a row, then insert a 0 and continue
 			{
-				CreateBit( BIT_LOW );
+				CreateSyncBit( BIT_LOW );
 				previousBit = BIT_LOW;
 				consecutiveOnes = 0;
 			}
@@ -223,13 +242,17 @@ void HdlcSimulationDataGenerator::Transmit( const vector<U8> & stream )
 				}
 				
 			}
-			CreateBit( bit );
+			CreateSyncBit( bit );
 			previousBit = bit;
 		}
 	}
+	
+	// Closing flag
+	CreateFlagBitSeq();
+
 }
 
-void HdlcSimulationDataGenerator::CreateFlagSequence() 
+void HdlcSimulationDataGenerator::CreateFlagBitSeq() 
 {
 	mHdlcSimulationData.Transition();
 	mHdlcSimulationData.Advance( mSamplesInHalfPeriod * 7 );
@@ -238,11 +261,64 @@ void HdlcSimulationDataGenerator::CreateFlagSequence()
 }
 
 // Maps the bit to the signal using NRZI 
-void HdlcSimulationDataGenerator::CreateBit( BitState bitState ) 
+void HdlcSimulationDataGenerator::CreateSyncBit( BitState bitState ) 
 {
 	if( bitState == BIT_LOW ) // BIT_LOW == transition, BIT_HIGH == no transition
 	{
 		mHdlcSimulationData.Transition();
 	}
 	mHdlcSimulationData.Advance( mSamplesInHalfPeriod );
+}
+
+void HdlcSimulationDataGenerator::TransmitByteAsync( const vector<U8> & stream ) 
+{
+	// Opening flag
+	CreateAsyncByte( HDLC_FLAG_VALUE );
+	
+	for( U32 i=0; i < stream.size(); ++i )
+	{
+		const U8 byte = stream[i];
+		switch ( byte ) 
+		{
+			case HDLC_FLAG_VALUE: 
+				CreateAsyncByte( HDLC_ESCAPE_SEQ_VALUE );			// 7D escape
+				CreateAsyncByte( HDLC_FLAG_BIT5INV_VALUE );			// 5E
+				break;
+			case HDLC_ESCAPE_SEQ_VALUE:
+				CreateAsyncByte( HDLC_ESCAPE_SEQ_VALUE );			// 7D escape
+				CreateAsyncByte( HDLC_ESCAPE_SEQ_BIT5INV_VALUE );	// 5D
+				break;
+			default:
+				CreateAsyncByte( byte );							// normal byte
+		}
+		
+		// Fill between bytes (0 to 8 bits of value 1)
+		CreateAsyncByte( ( rand() % 8 ) >> HDLC_FILL_VALUE );
+	}
+	
+	// Closing flag
+	CreateAsyncByte( HDLC_FLAG_VALUE );
+	
+}
+
+// ISO/IEC 13239:2002(E) pag. 17
+void HdlcSimulationDataGenerator::CreateAsyncByte( U8 byte ) 
+{
+	// 1) Start bit (BIT_HIGH -> BIT_LOW)
+	mHdlcSimulationData.TransitionIfNeeded( BIT_LOW );
+	mHdlcSimulationData.Advance( mSamplesInHalfPeriod );
+		
+	// 2) Transmit byte
+	BitExtractor bit_extractor( byte, AnalyzerEnums::LsbFirst, 8 );
+	for( U32 i=0; i < 8; ++i )
+	{
+		BitState bit = bit_extractor.GetNextBit();
+		mHdlcSimulationData.TransitionIfNeeded( bit );
+		mHdlcSimulationData.Advance( mSamplesInHalfPeriod );
+	}
+	
+	// 3) Stop bit (BIT_LOW -> BIT_HIGH)
+	mHdlcSimulationData.TransitionIfNeeded( BIT_HIGH );
+	mHdlcSimulationData.Advance( mSamplesInHalfPeriod );
+	
 }
