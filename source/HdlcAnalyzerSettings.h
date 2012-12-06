@@ -29,7 +29,7 @@ enum HdlcControlType { HDLC_BASIC_CONTROL_FIELD,
 // Frame Check Sequence algorithm
 enum HdlcFcsType { HDLC_CRC8 = 0, HDLC_CRC16, HDLC_CRC32 };
 
-// Values for Byte Asynchronous transmission
+// Special values for Byte Asynchronous Transmission
 #define HDLC_FLAG_VALUE 0x7E
 #define HDLC_FLAG_BIT5INV_VALUE 0x5E
 #define HDLC_ESCAPE_SEQ_VALUE 0x7D
