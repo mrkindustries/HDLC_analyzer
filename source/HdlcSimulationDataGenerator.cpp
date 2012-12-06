@@ -50,9 +50,9 @@ U32 HdlcSimulationDataGenerator::GenerateSimulationData( U64 largest_sample_requ
 		CreateFlag();
 		CreateFlag();
 		
-		vector<U8> address = GenAddressField(mSettings->mHdlcAddr, addressBytes, 0x00);
-		vector<U8> control = GenControlField(frameTypes[idxFrames++%3], mSettings->mHdlcControl, controlValue++);
-		vector<U8> information = GenInformationField(/*size++*/ 8, informationValue++);
+		vector<U8> address = GenAddressField(mSettings->mHdlcAddr, addressBytes, 0x0F/*0x00*/);
+		vector<U8> control = GenControlField(frameTypes[idxFrames++%3], mSettings->mHdlcControl, 0x0F/*controlValue++*/);
+		vector<U8> information = GenInformationField(/*size++*/ 1, 0x0F/*informationValue++*/);
 		
 		CreateHDLCFrame( address, control, information );
 		
@@ -116,14 +116,21 @@ vector<U8> HdlcSimulationDataGenerator::GenControlField( HdlcFrameType frameType
 			{
 				case HDLC_EXTENDED_CONTROL_FIELD_MOD_128:
 					controlRet.push_back(value); // second byte
+					break;
 				case HDLC_EXTENDED_CONTROL_FIELD_MOD_32768:
+					controlRet.push_back(value); // second byte
 					controlRet.push_back(value); // third byte
 					controlRet.push_back(value); // fourth byte
+					break;
 				case HDLC_EXTENDED_CONTROL_FIELD_MOD_2147483648: 
+					controlRet.push_back(value); // second byte
+					controlRet.push_back(value); // third byte
+					controlRet.push_back(value); // fourth byte
 					controlRet.push_back(value); // fifth byte
 					controlRet.push_back(value); // sixth byte
 					controlRet.push_back(value); // seventh byte
 					controlRet.push_back(value); // eighth byte
+					break;
 			}
 			break;
 		}
