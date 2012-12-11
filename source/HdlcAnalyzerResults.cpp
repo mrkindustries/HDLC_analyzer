@@ -60,10 +60,16 @@ void HdlcAnalyzerResults::GenBubbleText( U64 frame_index, DisplayBase display_ba
 		case HDLC_FIELD_FLAG: 
 			GenFlagFieldString(tabular);
 			break;
-		case HDLC_FIELD_ADDRESS:
+		case HDLC_FIELD_BASIC_ADDRESS:
 			GenAddressFieldString(frame, display_base, tabular);
 			break;
-		case HDLC_FIELD_CONTROL:
+		case HDLC_FIELD_EXTENDED_ADDRESS:
+			GenAddressFieldString(frame, display_base, tabular);
+			break;
+		case HDLC_FIELD_BASIC_CONTROL:
+			GenControlFieldString(frame, display_base, tabular);
+			break;
+		case HDLC_FIELD_EXTENDED_CONTROL:
 			GenControlFieldString(frame, display_base, tabular);
 			break;
 		case HDLC_FIELD_INFORMATION:
@@ -98,7 +104,7 @@ void HdlcAnalyzerResults::GenFcsFieldString( const Frame & frame, DisplayBase di
 	{
 		AddResultString( "CRC" );
 	}
-	AddResultString( "CRC [", number_str, "]" );
+	AddResultString( "CRC" );
 }
 
 void HdlcAnalyzerResults::GenFlagFieldString(bool tabular) 

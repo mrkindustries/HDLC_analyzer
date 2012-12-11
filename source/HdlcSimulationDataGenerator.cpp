@@ -192,21 +192,21 @@ vector<U8> HdlcSimulationDataGenerator::GenFcs( HdlcFcsType fcsType, const vecto
 	return crcRet;
 }
 
-vector<U8> HdlcSimulationDataGenerator::Crc8( const vector<U8> & stream ) const
+vector<U8> HdlcSimulationDataGenerator::Crc8( const vector<U8> & stream )
 {
 	vector<U8> crc8Ret(1, 0);
 	// TODO
 	return crc8Ret;
 }
 
-vector<U8> HdlcSimulationDataGenerator::Crc16( const vector<U8> & stream ) const
+vector<U8> HdlcSimulationDataGenerator::Crc16( const vector<U8> & stream )
 {
 	vector<U8> crc16Ret(2, 0);
 	// TODO
 	return crc16Ret;
 }
 
-vector<U8> HdlcSimulationDataGenerator::Crc32( const vector<U8> & stream ) const
+vector<U8> HdlcSimulationDataGenerator::Crc32( const vector<U8> & stream )
 {
 	vector<U8> crc32Ret(4, 0);
 	// TODO
@@ -300,7 +300,7 @@ void HdlcSimulationDataGenerator::TransmitByteAsync( const vector<U8> & stream )
 		}
 		
 		// Fill between bytes (0 to 8 bits of value 1)
-		CreateAsyncByte( ( rand() % 8 ) >> HDLC_FILL_VALUE );
+		AsyncByteFill( rand() % 8 );
 	}
 	
 	// Closing flag
@@ -308,9 +308,28 @@ void HdlcSimulationDataGenerator::TransmitByteAsync( const vector<U8> & stream )
 	
 }
 
+void HdlcSimulationDataGenerator::AsyncByteFill( U32 N )
+{
+	// 0) If the line is not high we must set it high
+	if( mHdlcSimulationData.GetCurrentBitState() == BIT_LOW ) 
+	{
+		mHdlcSimulationData.Transition();
+	}
+	// Fill N high periods
+	mHdlcSimulationData.Advance( mSamplesInHalfPeriod * N );
+}
+
 // ISO/IEC 13239:2002(E) pag. 17
 void HdlcSimulationDataGenerator::CreateAsyncByte( U8 byte ) 
 {
+	
+	// 0) If the line is not high we must set it high
+	if( mHdlcSimulationData.GetCurrentBitState() == BIT_LOW ) 
+	{
+		mHdlcSimulationData.Transition();
+		mHdlcSimulationData.Advance( mSamplesInHalfPeriod );
+	}
+	
 	// 1) Start bit (BIT_HIGH -> BIT_LOW)
 	mHdlcSimulationData.TransitionIfNeeded( BIT_LOW );
 	mHdlcSimulationData.Advance( mSamplesInHalfPeriod );
