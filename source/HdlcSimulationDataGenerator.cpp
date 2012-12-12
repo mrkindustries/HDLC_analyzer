@@ -36,6 +36,8 @@ U32 HdlcSimulationDataGenerator::GenerateSimulationData( U64 largest_sample_requ
 {
 	U64 adjusted_largest_sample_requested = AnalyzerHelpers::AdjustSimulationTargetSample( largest_sample_requested, sample_rate, mSimulationSampleRateHz );
 
+	srand( time( NULL ) );
+	
 	U8 value=0;
 	U16 size=0;
 	U8 informationValue=0;
@@ -52,7 +54,7 @@ U32 HdlcSimulationDataGenerator::GenerateSimulationData( U64 largest_sample_requ
 		
 		vector<U8> address = GenAddressField(mSettings->mHdlcAddr, addressBytes, 0x0F/*0x00*/);
 		vector<U8> control = GenControlField(frameTypes[idxFrames++%3], mSettings->mHdlcControl, 0x0F/*controlValue++*/);
-		vector<U8> information = GenInformationField(/*size++*/ 1, 0x0F/*informationValue++*/);
+		vector<U8> information = GenInformationField(/*size++*/ 2, 0x0F/*informationValue++*/);
 		
 		CreateHDLCFrame( address, control, information );
 		

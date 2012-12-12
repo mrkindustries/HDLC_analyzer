@@ -27,7 +27,10 @@ enum HdlcControlType { HDLC_BASIC_CONTROL_FIELD,
 					   HDLC_EXTENDED_CONTROL_FIELD_MOD_32768, 
 					   HDLC_EXTENDED_CONTROL_FIELD_MOD_2147483648 };
 // Frame Check Sequence algorithm
-enum HdlcFcsType { HDLC_CRC8 = 0, HDLC_CRC16, HDLC_CRC32 };
+enum HdlcFcsType { HDLC_CRC8 = 0, HDLC_CRC16 = 1, HDLC_CRC32 = 2 };
+// Flag Field Type (Start, End or Fill)
+enum HdlcFlagType { HDLC_FLAG_START = 0, HDLC_FLAG_END = 1, HDLC_FLAG_FILL = 2 };
+
 
 // Special values for Byte Asynchronous Transmission
 #define HDLC_FLAG_VALUE 0x7E

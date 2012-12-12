@@ -5,14 +5,14 @@
 #include "HdlcAnalyzerResults.h"
 #include "HdlcSimulationDataGenerator.h"
 
-// TODO: Change functions names Byte por Async
-
 struct AsyncByte 
 {
 	U64 startSample;
 	U64 endSample;
 	U8 value;
 };
+
+typedef AsyncByte BitSequence;
 
 class HdlcAnalyzerSettings;
 class ANALYZER_EXPORT HdlcAnalyzer : public Analyzer
@@ -32,26 +32,32 @@ protected:
 	
 	void SetupAnalyzer();
 	
-	// Bit Sync Transmission functions
-	void ProcessBitSync();
-	bool BitSyncProcessFlags();
-	void BitSyncProcessAddressField();
-	void BitSyncProcessControlField();
-	void BitSyncProcessInfoAndFcsField();
-	
-	// Byte Async Transmission functions
-	void ProcessByteAsync();
-	AsyncByte ByteAsyncProcessFlags();
-	void ByteAsyncProcessAddressField( AsyncByte byteAfterFlag );
-	void ByteAsyncProcessControlField();
-	vector<AsyncByte> ByteAsyncReadProcessAndFcsField();
-	void ByteAsyncProcessInfoAndFcsField();
-	void ByteAsyncInfoAndFcsField(vector<AsyncByte> informationAndFcs);
-	void ByteAsyncProcessInformationField(const vector<AsyncByte> & information);
-	void ByteAsyncProcessFcsField(const vector<AsyncByte> & fcs);
+	// General function to read a byte
 	AsyncByte ReadByte();
 	
+	// Function to read and process a HDLC frame
+	void ProcessHDLCFrame();
+	
+	// Bit Sync Transmission functions
+	BitSequence BitSyncProcessFlags();
+	BitState BitSyncReadBit();	
+	BitSequence BitSyncReadByte();
+	
+	// Byte Async Transmission functions
+	AsyncByte ByteAsyncProcessFlags();
+	AsyncByte ByteAsyncReadByte();
+	
+	void ProcessAddressField( AsyncByte byteAfterFlag );
+	void ProcessControlField();
+	vector<AsyncByte> ReadProcessAndFcsField();
+	void ProcessInfoAndFcsField();
+	void InfoAndFcsField(vector<AsyncByte> informationAndFcs);
+	void ProcessInformationField(const vector<AsyncByte> & information);
+	void ProcessFcsField(const vector<AsyncByte> & fcs);
+	
 	// Helper functions
+	Frame CreateFrame( U8 mType, U64 mStartingSampleInclusive, U64 mEndingSampleInclusive, 
+					   U64 mData1=0, U64 mData2=0, U8 mFlags=0 ) const;
 	U8 Bit5Inv( U8 value ) const;
 	vector<U8> AsyncBytesToVectorBytes(const vector<AsyncByte> & asyncBytes) const;
 	U64 VectorToValue(const vector<U8> & v) const;
@@ -65,6 +71,8 @@ protected:
 	U32 mSamplesIn7Bits;
 	
 	vector<U8> mCurrentFrameBytes;
+	
+	BitState mPreviousBitState;
 	
 	HdlcSimulationDataGenerator mSimulationDataGenerator;
 	bool mSimulationInitilized;

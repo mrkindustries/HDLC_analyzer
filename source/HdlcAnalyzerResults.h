@@ -22,7 +22,7 @@ public:
 protected: //functions
 	void GenBubbleText( U64 frame_index, DisplayBase display_base, bool tabular );
 	
-	void GenFlagFieldString( bool tabular );
+	void GenFlagFieldString( const Frame & frame, bool tabular );
 	void GenAddressFieldString( const Frame & frame, DisplayBase display_base, bool tabular );
 	void GenControlFieldString( const Frame & frame, DisplayBase display_base, bool tabular );
 	void GenInformationFieldString( const Frame & frame, DisplayBase display_base, bool tabular );
