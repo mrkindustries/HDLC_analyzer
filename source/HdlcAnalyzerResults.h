@@ -28,6 +28,7 @@ protected: //functions
 	void GenInformationFieldString( const Frame & frame, DisplayBase display_base, bool tabular );
 	void GenFcsFieldString( const Frame & frame, DisplayBase display_base, bool tabular );
 	void GenEscapeFieldString( bool tabular );
+	void GenAbortFieldString( bool tabular );
 	
 protected:  //vars
 	HdlcAnalyzerSettings* mSettings;

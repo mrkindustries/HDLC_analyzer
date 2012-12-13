@@ -80,7 +80,8 @@ void HdlcAnalyzer::ProcessHDLCFrame()
 	ProcessAddressField( addressByte );
 	ProcessControlField();
 	ProcessInfoAndFcsField();
-	mReadingFrame = false;	
+	mReadingFrame = false;
+	mAbortFrame = false;
 	
 }
 
@@ -202,12 +203,6 @@ bool HdlcAnalyzer::AbortComing()
 
 HdlcByte HdlcAnalyzer::BitSyncReadByte()
 {
-	if ( AbortComing() )
-	{
-		mAbortFrame = true;
-		// TODO
-	}
-	
 	if( mReadingFrame && FlagComing() )
 	{
 		U64 startSample = mHdlc->GetSampleNumber();
@@ -215,6 +210,14 @@ HdlcByte HdlcAnalyzer::BitSyncReadByte()
 		U64 endSample = mHdlc->GetSampleNumber();
 		HdlcByte bs = { startSample, endSample, HDLC_FLAG_VALUE };
 		return bs;
+	}
+	else 
+	{
+		if ( AbortComing() )
+		{
+			mAbortFrame = true;
+			// TODO
+		}
 	}
 	
 	U64 byteValue= 0;
@@ -245,7 +248,8 @@ HdlcByte HdlcAnalyzer::ByteAsyncProcessFlags()
 	vector<HdlcByte> readBytes;
 	for( ; ; )
 	{
-		HdlcByte asyncByte = ReadByte();
+		HdlcByte asyncByte = ReadByte(); 
+		//cerr << int(asyncByte.value) << endl;
 		if( asyncByte.value != HDLC_FLAG_VALUE && flagEncountered ) // NOTE: ignore non-flag bytes!
 		{
 			readBytes.push_back( asyncByte );
@@ -256,8 +260,25 @@ HdlcByte HdlcAnalyzer::ByteAsyncProcessFlags()
 			readBytes.push_back( asyncByte );
 			flagEncountered = true;
 		}
+		if( mAbortFrame ) 
+		{ 
+			GenerateFlagsFrames( readBytes );
+			return HdlcByte(); 
+		}
+
 	}
 	
+	cerr << readBytes.size() << endl;
+	
+	GenerateFlagsFrames( readBytes );
+	
+	HdlcByte nonFlagByte = readBytes.back();
+	return nonFlagByte;
+	
+}
+
+void HdlcAnalyzer::GenerateFlagsFrames( vector<HdlcByte> readBytes ) 
+{
 	// 2) Generate the flag frames and return non-flag byte after the flags
 	for( U32 i=0; i<readBytes.size()-1; ++i )
 	{
@@ -275,11 +296,7 @@ HdlcByte HdlcAnalyzer::ByteAsyncProcessFlags()
 		}
 		
 		mResults->AddFrame( frame );
-	}
-	
-	HdlcByte nonFlagByte = readBytes.back();
-	return nonFlagByte;
-	
+	}	
 }
 
 void HdlcAnalyzer::ProcessAddressField( HdlcByte byteAfterFlag )
@@ -573,13 +590,16 @@ HdlcByte HdlcAnalyzer::ByteAsyncReadByte()
 		Frame frame = CreateFrame(HDLC_ESCAPE_SEQ, ret.startSample, ret.endSample );
 		mResults->AddFrame( frame );
 		ret = ByteAsyncReadByte_();
+		ret.value = HdlcSimulationDataGenerator::Bit5Inv( ret.value );
 		if( ret.value == HDLC_FLAG_VALUE ) // abort sequence = ESCAPE_BYTE + FLAG_BYTE (0x7D-0x7E)
 		{
+			// Create "Abort Frame" frame
+			Frame frame = CreateFrame(HDLC_ABORT_SEQ, ret.startSample, ret.endSample );
+			mResults->AddFrame( frame );
 			mAbortFrame = true;
 		}
-		else // invert bit-5
+		else
 		{
-			ret.value = HdlcSimulationDataGenerator::Bit5Inv( ret.value );
 			mCurrentFrameBytes.push_back( ret.value );
 		}
 	}

@@ -52,6 +52,7 @@ protected:
 	
 	// Byte Async Transmission functions
 	HdlcByte ByteAsyncProcessFlags();
+	void GenerateFlagsFrames( vector<HdlcByte> readBytes ) ;
 	HdlcByte ByteAsyncReadByte();
 	HdlcByte ByteAsyncReadByte_();
 	

@@ -52,7 +52,7 @@ U32 HdlcSimulationDataGenerator::GenerateSimulationData( U64 largest_sample_requ
 		CreateFlag();
 		CreateFlag();
 		
-		vector<U8> address = GenAddressField(mSettings->mHdlcAddr, addressBytes, 0xFF);
+		vector<U8> address = GenAddressField(mSettings->mHdlcAddr, addressBytes, 0x7E);
 		vector<U8> control = GenControlField(frameTypes[idxFrames++%3], mSettings->mHdlcControl, 0x0F/*controlValue++*/);
 		vector<U8> information = GenInformationField(/*size++*/ 2, 0x0F/*informationValue++*/);
 		

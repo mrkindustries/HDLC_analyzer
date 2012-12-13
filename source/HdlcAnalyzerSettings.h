@@ -14,7 +14,7 @@
 // Inner frames types of HDLC frame (address, control, data, fcs, etc)
 enum HdlcFieldType { HDLC_FIELD_FLAG = 0, HDLC_FIELD_BASIC_ADDRESS, HDLC_FIELD_EXTENDED_ADDRESS, 
 					 HDLC_FIELD_BASIC_CONTROL, HDLC_FIELD_EXTENDED_CONTROL, 
-					 HDLC_FIELD_INFORMATION, HDLC_FIELD_FCS, HDLC_ESCAPE_SEQ };
+					 HDLC_FIELD_INFORMATION, HDLC_FIELD_FCS, HDLC_ESCAPE_SEQ, HDLC_ABORT_SEQ };
 // Transmission mode (bit stuffing or byte stuffing)
 enum HdlcTransmissionModeType { HDLC_TRANSMISSION_BIT_SYNC = 0, HDLC_TRANSMISSION_BYTE_ASYNC };
 // Types of HDLC frames (Information, Supervisory and Unnumbered)

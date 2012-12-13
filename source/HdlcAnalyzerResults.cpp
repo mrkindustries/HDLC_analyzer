@@ -52,6 +52,10 @@ void HdlcAnalyzerResults::GenBubbleText( U64 frame_index, DisplayBase display_ba
 		case HDLC_ESCAPE_SEQ:
 			GenEscapeFieldString(tabular);
 			break;
+		case HDLC_ABORT_SEQ:
+			GenAbortFieldString(tabular);
+			break;
+
 	}
 }
 
@@ -172,6 +176,16 @@ void HdlcAnalyzerResults::GenEscapeFieldString( bool tabular )
 		AddResultString( "ESCAPE (0x7D)" );
 	}
 	AddResultString( "ESCAPE (0x7D)" );
+}
+
+void HdlcAnalyzerResults::GenAbortFieldString( bool tabular )
+{
+	if( !tabular ) 
+	{
+		AddResultString( "AB" );
+		AddResultString( "ABORT" );
+	}
+	AddResultString( "ABORT FRAME" );
 }
 
 void HdlcAnalyzerResults::GenerateExportFile( const char* file, DisplayBase display_base, U32 export_type_user_id )
