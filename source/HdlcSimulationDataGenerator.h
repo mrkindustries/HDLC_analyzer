@@ -20,6 +20,7 @@ public:
 	static vector<U8> Crc8( const vector<U8> & stream );
 	static vector<U8> Crc16( const vector<U8> & stream );
 	static vector<U8> Crc32( const vector<U8> & stream );
+	static U8 Bit5Inv( U8 value );
 
 protected:
 	

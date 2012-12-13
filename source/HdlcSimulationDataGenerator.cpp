@@ -52,7 +52,7 @@ U32 HdlcSimulationDataGenerator::GenerateSimulationData( U64 largest_sample_requ
 		CreateFlag();
 		CreateFlag();
 		
-		vector<U8> address = GenAddressField(mSettings->mHdlcAddr, addressBytes, 0x0F/*0x00*/);
+		vector<U8> address = GenAddressField(mSettings->mHdlcAddr, addressBytes, 0xFF);
 		vector<U8> control = GenControlField(frameTypes[idxFrames++%3], mSettings->mHdlcControl, 0x0F/*controlValue++*/);
 		vector<U8> information = GenInformationField(/*size++*/ 2, 0x0F/*informationValue++*/);
 		
@@ -194,28 +194,6 @@ vector<U8> HdlcSimulationDataGenerator::GenFcs( HdlcFcsType fcsType, const vecto
 	return crcRet;
 }
 
-vector<U8> HdlcSimulationDataGenerator::Crc8( const vector<U8> & stream )
-{
-	vector<U8> crc8Ret(1, 0);
-	// TODO
-	return crc8Ret;
-}
-
-vector<U8> HdlcSimulationDataGenerator::Crc16( const vector<U8> & stream )
-{
-	vector<U8> crc16Ret(2, 0);
-	// TODO
-	return crc16Ret;
-}
-
-vector<U8> HdlcSimulationDataGenerator::Crc32( const vector<U8> & stream )
-{
-	vector<U8> crc32Ret(4, 0);
-	// TODO
-	return crc32Ret;
-
-}
-
 void HdlcSimulationDataGenerator::TransmitBitSync( const vector<U8> & stream ) 
 {
 	// Opening flag
@@ -232,10 +210,9 @@ void HdlcSimulationDataGenerator::TransmitBitSync( const vector<U8> & stream )
 		{
 			BitState bit = bit_extractor.GetNextBit();
 			
-			if( consecutiveOnes == 5 ) // if five 1s in a row, then insert a 0 and continue
+			if( consecutiveOnes == 4 ) // if five 1s in a row, then insert a 0 and continue
 			{
 				CreateSyncBit( BIT_LOW );
-				previousBit = BIT_LOW;
 				consecutiveOnes = 0;
 			}
 
@@ -251,6 +228,11 @@ void HdlcSimulationDataGenerator::TransmitBitSync( const vector<U8> & stream )
 				}
 				
 			}
+			else // bit low
+			{
+				consecutiveOnes = 0;
+			}
+			
 			CreateSyncBit( bit );
 			previousBit = bit;
 		}
@@ -289,13 +271,13 @@ void HdlcSimulationDataGenerator::TransmitByteAsync( const vector<U8> & stream )
 		const U8 byte = stream[i];
 		switch ( byte ) 
 		{
-			case HDLC_FLAG_VALUE: 
+			case HDLC_FLAG_VALUE: // 0x7E
 				CreateAsyncByte( HDLC_ESCAPE_SEQ_VALUE );			// 7D escape
-				CreateAsyncByte( HDLC_FLAG_BIT5INV_VALUE );			// 5E
+				CreateAsyncByte( Bit5Inv(HDLC_FLAG_VALUE) );		// 5E
 				break;
-			case HDLC_ESCAPE_SEQ_VALUE:
+			case HDLC_ESCAPE_SEQ_VALUE: // 0x7D
 				CreateAsyncByte( HDLC_ESCAPE_SEQ_VALUE );			// 7D escape
-				CreateAsyncByte( HDLC_ESCAPE_SEQ_BIT5INV_VALUE );	// 5D
+				CreateAsyncByte( Bit5Inv(HDLC_ESCAPE_SEQ_VALUE) );	// 5D
 				break;
 			default:
 				CreateAsyncByte( byte );							// normal byte
@@ -349,4 +331,35 @@ void HdlcSimulationDataGenerator::CreateAsyncByte( U8 byte )
 	mHdlcSimulationData.TransitionIfNeeded( BIT_HIGH );
 	mHdlcSimulationData.Advance( mSamplesInHalfPeriod );
 	
+}
+
+//
+////////////////////// Static functions /////////////////////////////////////////////////////
+//
+
+vector<U8> HdlcSimulationDataGenerator::Crc8( const vector<U8> & stream )
+{
+	vector<U8> crc8Ret(1, 0);
+	// TODO
+	return crc8Ret;
+}
+
+vector<U8> HdlcSimulationDataGenerator::Crc16( const vector<U8> & stream )
+{
+	vector<U8> crc16Ret(2, 0);
+	// TODO
+	return crc16Ret;
+}
+
+vector<U8> HdlcSimulationDataGenerator::Crc32( const vector<U8> & stream )
+{
+	vector<U8> crc32Ret(4, 0);
+	// TODO
+	return crc32Ret;
+
+}
+
+U8 HdlcSimulationDataGenerator::Bit5Inv( U8 value ) 
+{
+	return value ^ 0x20;
 }

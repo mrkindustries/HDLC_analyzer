@@ -49,6 +49,9 @@ void HdlcAnalyzerResults::GenBubbleText( U64 frame_index, DisplayBase display_ba
 		case HDLC_FIELD_FCS:
 			GenFcsFieldString(frame, display_base, tabular);
 			break;
+		case HDLC_ESCAPE_SEQ:
+			GenEscapeFieldString(tabular);
+			break;
 	}
 }
 
@@ -77,7 +80,7 @@ void HdlcAnalyzerResults::GenAddressFieldString(const Frame & frame, DisplayBase
 	char addressStr[64];
 	AnalyzerHelpers::GetNumberString( frame.mData1, display_base, 8, addressStr, 64 );
 	char byteNumber[64];
-	AnalyzerHelpers::GetNumberString( frame.mData2, display_base, 8, byteNumber, 64 );
+	AnalyzerHelpers::GetNumberString( frame.mData2, Decimal, 8, byteNumber, 64 );
 	
 	if( !tabular ) 
 	{
@@ -152,11 +155,23 @@ void HdlcAnalyzerResults::GenFcsFieldString( const Frame & frame, DisplayBase di
 	{
 		if( !tabular ) 
 		{
-			AddResultString( "CRC (ok)", crcTypeStr );
+			AddResultString( "CRC", crcTypeStr, "->ok" );
 		}
-		AddResultString( "CRC (ok)", crcTypeStr, " [", readFcsStr, "]" );
+		AddResultString( "CRC", crcTypeStr, "->ok [", readFcsStr, "]" );
 	}
 	
+}
+
+void HdlcAnalyzerResults::GenEscapeFieldString( bool tabular )
+{
+	if( !tabular ) 
+	{
+		AddResultString( "E" );
+		AddResultString( "ESC" );
+		AddResultString( "ESCAPE" );
+		AddResultString( "ESCAPE (0x7D)" );
+	}
+	AddResultString( "ESCAPE (0x7D)" );
 }
 
 void HdlcAnalyzerResults::GenerateExportFile( const char* file, DisplayBase display_base, U32 export_type_user_id )
