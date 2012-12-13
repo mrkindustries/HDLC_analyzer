@@ -152,111 +152,35 @@ void HdlcAnalyzer::BitSyncProcessFlags()
 	
 }
 
-/*
-// TODO: debug...
-HdlcByte HdlcAnalyzer::BitSyncProcessFirstByteAfterFlag( HdlcByte firstAddressByte )
-{
-	
-	U64 byteValue= 0;
-	DataBuilder dbyte;
-	dbyte.Reset( &byteValue, AnalyzerEnums::LsbFirst, 8 );
-	
-	U64 value2 = firstAddressByte.value;
-	BitExtractor bit_extractor( value2, AnalyzerEnums::LsbFirst, 8 );
-	U32 consecutiveOnes = 1;
-	BitState previousBit = BIT_LOW;
-	bool fiveBitsInARow = false;
-	
-	for( U32 i=0; i<8; ++i )
-	{
-		BitState bit = BIT_LOW;
-		if (consecutiveOnes == 5) 
-		{
-			fiveBitsInARow = true;
-			//bit_extractor.GetNextBit();
-		}
-		else
-		{
-			//bit = bit_extractor.GetNextBit();
-		}
-		
-		if( bit == BIT_HIGH && i>0 )
-		{
-			if ( bit == previousBit ) 
-			{
-				consecutiveOnes++;
-			}
-			else 
-			{
-				consecutiveOnes = 1;
-			}
-		}
-		
-		if( consecutiveOnes != 5 )
-		{
-			dbyte.AddBit( bit );
-		}
-		previousBit = bit;
-	}
-	
-	//cerr << "#### " << int(firstAddressByte.value) << " | " << byteValue << endl;
-	
-	HdlcByte retByte = firstAddressByte;
-	
-	if( fiveBitsInARow ) 
-	{
-		// Read Remaining bit
-		dbyte.AddBit( BitSyncReadBit() );
-		retByte.value = U8( byteValue );
-		retByte.endSample += mSamplesInHalfPeriod * 2;
-	}
-	
-	return retByte;
-	
-}
-*/
-
 BitState HdlcAnalyzer::BitSyncReadBit()
 {
-	mHdlc->Advance( mSamplesInHalfPeriod * 0.5 );
-	
-	BitState bit = mHdlc->GetBitState();
 	BitState ret;
-	if( bit == BIT_HIGH )
+	
+	mHdlc->Advance( mSamplesInHalfPeriod * 0.5 );
+	BitState bit = mHdlc->GetBitState(); // sample the bit
+	
+	if( bit == mPreviousBitState )
 	{
-		if( bit == mPreviousBitState )
+		mConsecutiveOnes++;
+		if( mReadingFrame && mConsecutiveOnes == 5)
 		{
-			mConsecutiveOnes++;
-			if( mReadingFrame && mConsecutiveOnes == 5)
-			{
-				mHdlc->Advance( mSamplesInHalfPeriod );
-				mConsecutiveOnes = 0;
-				mPreviousBitState = BIT_LOW;
-			}
-			else 
-			{
-				mPreviousBitState = bit;
-			}
-			ret = BIT_HIGH;
+			mHdlc->Advance( mSamplesInHalfPeriod );
+			mConsecutiveOnes = 0;
+			mPreviousBitState = mHdlc->GetBitState();
 		}
 		else 
 		{
-			ret = BIT_LOW;
-			mConsecutiveOnes = 0;
 			mPreviousBitState = bit;
 		}
+		
+		ret = BIT_HIGH;
 	}
-	else
+	else // bit changed so it's a 0
 	{
-		if( bit == mPreviousBitState )
-		{
-			ret = BIT_HIGH;
-		}
-		else
-		{
-			ret = BIT_LOW;
-		}
+		mConsecutiveOnes = 0;
 		mPreviousBitState = bit;
+		
+		ret = BIT_LOW;
 	}
 	
 	mHdlc->Advance( mSamplesInHalfPeriod * 0.5 );
@@ -288,10 +212,10 @@ HdlcByte HdlcAnalyzer::BitSyncReadByte()
 	for(U32 i=0; i<8 ; ++i)
 	{
 		BitState bit = BitSyncReadBit();
-		cerr << ((bit == BIT_HIGH) ? 1 : 0) << " ";
+		//cerr << ((bit == BIT_HIGH) ? 1 : 0) << " ";
 		dbyte.AddBit( bit );
 	}
-	cerr << endl;
+	// cerr << endl;
 	U64 endSample = mHdlc->GetSampleNumber() - mSamplesInHalfPeriod;
 	HdlcByte bs = { startSample, endSample, U8( byteValue ) };
 	return bs;

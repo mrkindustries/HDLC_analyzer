@@ -209,13 +209,8 @@ void HdlcSimulationDataGenerator::TransmitBitSync( const vector<U8> & stream )
 		for( U32 i=0; i<8; ++i )
 		{
 			BitState bit = bit_extractor.GetNextBit();
+			CreateSyncBit( bit );
 			
-			if( consecutiveOnes == 4 ) // if five 1s in a row, then insert a 0 and continue
-			{
-				CreateSyncBit( BIT_LOW );
-				consecutiveOnes = 0;
-			}
-
 			if( bit == BIT_HIGH ) 
 			{
 				if( previousBit == BIT_HIGH ) 
@@ -226,15 +221,22 @@ void HdlcSimulationDataGenerator::TransmitBitSync( const vector<U8> & stream )
 				{
 					consecutiveOnes = 0;
 				}
-				
 			}
 			else // bit low
 			{
 				consecutiveOnes = 0;
 			}
 			
-			CreateSyncBit( bit );
-			previousBit = bit;
+			if( consecutiveOnes == 4 ) // if five 1s in a row, then insert a 0 and continue
+			{
+				CreateSyncBit( BIT_LOW );
+				consecutiveOnes = 0;
+				previousBit = BIT_LOW;
+			}
+			else 
+			{
+				previousBit = bit;
+			}
 		}
 	}
 	
