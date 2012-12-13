@@ -38,10 +38,12 @@ void HdlcAnalyzer::SetupAnalyzer()
 	mSampleRateHz = this->GetSampleRate();
 	mSamplesInHalfPeriod = U32( ( mSampleRateHz * halfPeriod ) / 1000000.0 );
 	mSamplesIn7Bits = mSamplesInHalfPeriod * 7;	
+	mSamplesIn8Bits = mSamplesInHalfPeriod * 8;
 	
 	mPreviousBitState = mHdlc->GetBitState();
 	mConsecutiveOnes = 0;
 	mReadingFrame = false;
+	mAbortFrame = false;
 }
 
 void HdlcAnalyzer::WorkerThread()
@@ -193,8 +195,18 @@ bool HdlcAnalyzer::FlagComing()
 		   mHdlc->WouldAdvancingCauseTransition( mSamplesIn7Bits );
 }
 
+bool HdlcAnalyzer::AbortComing()
+{
+	return false;
+}
+
 HdlcByte HdlcAnalyzer::BitSyncReadByte()
 {
+	if ( AbortComing() )
+	{
+		mAbortFrame = true;
+		// TODO
+	}
 	
 	if( mReadingFrame && FlagComing() )
 	{
@@ -272,6 +284,10 @@ HdlcByte HdlcAnalyzer::ByteAsyncProcessFlags()
 
 void HdlcAnalyzer::ProcessAddressField( HdlcByte byteAfterFlag )
 {
+	if( mAbortFrame )
+	{
+		return;
+	}
 	
 	if( mSettings->mHdlcAddr == HDLC_BASIC_ADDRESS_FIELD ) 
 	{
@@ -302,7 +318,7 @@ void HdlcAnalyzer::ProcessAddressField( HdlcByte byteAfterFlag )
 			}
 			
 			// Next address byte
-			addressByte = ReadByte();
+			addressByte = ReadByte(); if( mAbortFrame ) { return; }
 			
 		}
 	}
@@ -311,9 +327,15 @@ void HdlcAnalyzer::ProcessAddressField( HdlcByte byteAfterFlag )
 // NOTE: Little-endian (first byte is the LSB byte)
 void HdlcAnalyzer::ProcessControlField()
 {
+	if( mAbortFrame )
+	{
+		return;
+	}
+	
 	if ( mSettings->mHdlcControl == HDLC_BASIC_CONTROL_FIELD ) // Basic Control Field of 1 byte
 	{
-		HdlcByte controlByte = ReadByte();
+		HdlcByte controlByte = ReadByte(); if( mAbortFrame ) { return; }
+		
 		Frame frame = CreateFrame( HDLC_FIELD_BASIC_CONTROL, controlByte.startSample, 
 								   controlByte.endSample, controlByte.value);
 		mResults->AddFrame( frame );
@@ -328,8 +350,8 @@ void HdlcAnalyzer::ProcessControlField()
 		{
 			case HDLC_EXTENDED_CONTROL_FIELD_MOD_128: 
 			{
-				HdlcByte byte0 = ReadByte();
-				HdlcByte byte1 = ReadByte();
+				HdlcByte byte0 = ReadByte(); if( mAbortFrame ) { return; }
+				HdlcByte byte1 = ReadByte(); if( mAbortFrame ) { return; }
 				data1 |= byte0.value;
 				data1 |= (byte1.value << 8);
 				startSample = byte0.startSample;
@@ -340,10 +362,10 @@ void HdlcAnalyzer::ProcessControlField()
 			}
 			case HDLC_EXTENDED_CONTROL_FIELD_MOD_32768: 
 			{
-				HdlcByte byte0 = ReadByte();
-				HdlcByte byte1 = ReadByte();
-				HdlcByte byte2 = ReadByte();
-				HdlcByte byte3 = ReadByte();
+				HdlcByte byte0 = ReadByte(); if( mAbortFrame ) { return; }
+				HdlcByte byte1 = ReadByte(); if( mAbortFrame ) { return; }
+				HdlcByte byte2 = ReadByte(); if( mAbortFrame ) { return; }
+				HdlcByte byte3 = ReadByte(); if( mAbortFrame ) { return; }
 				
 				data1 |= (byte0.value);
 				data1 |= (byte1.value << 8);
@@ -362,14 +384,14 @@ void HdlcAnalyzer::ProcessControlField()
 			}
 			case HDLC_EXTENDED_CONTROL_FIELD_MOD_2147483648:
 			{
-				HdlcByte byte0 = ReadByte();
-				HdlcByte byte1 = ReadByte();
-				HdlcByte byte2 = ReadByte();
-				HdlcByte byte3 = ReadByte();
-				HdlcByte byte4 = ReadByte();
-				HdlcByte byte5 = ReadByte();
-				HdlcByte byte6 = ReadByte();
-				HdlcByte byte7 = ReadByte();
+				HdlcByte byte0 = ReadByte(); if( mAbortFrame ) { return; }
+				HdlcByte byte1 = ReadByte(); if( mAbortFrame ) { return; }
+				HdlcByte byte2 = ReadByte(); if( mAbortFrame ) { return; }
+				HdlcByte byte3 = ReadByte(); if( mAbortFrame ) { return; }
+				HdlcByte byte4 = ReadByte(); if( mAbortFrame ) { return; }
+				HdlcByte byte5 = ReadByte(); if( mAbortFrame ) { return; }
+				HdlcByte byte6 = ReadByte(); if( mAbortFrame ) { return; }
+				HdlcByte byte7 = ReadByte(); if( mAbortFrame ) { return; }
 				
 				data1 = byte0.value | (byte1.value << 8) |
 						(byte2.value << 16) | (byte3.value << 24) |
@@ -406,7 +428,7 @@ vector<HdlcByte> HdlcAnalyzer::ReadProcessAndFcsField()
 	bool endOfFrame=false;
 	for( ; ; )
 	{
-		HdlcByte asyncByte = ReadByte();
+		HdlcByte asyncByte = ReadByte(); if( mAbortFrame ) { return infoAndFcs; }
 		if( asyncByte.value == HDLC_FLAG_VALUE ) 
 		{
 			Frame frame = CreateFrame( HDLC_FIELD_FLAG, asyncByte.startSample, 
@@ -426,8 +448,15 @@ vector<HdlcByte> HdlcAnalyzer::ReadProcessAndFcsField()
 
 void HdlcAnalyzer::ProcessInfoAndFcsField()
 {
+	if( mAbortFrame )
+	{
+		mAbortFrame = false;
+		return;
+	}
+
 	vector<HdlcByte> informationAndFcs = ReadProcessAndFcsField();
 	InfoAndFcsField(informationAndFcs);
+	mAbortFrame = false;
 }
 
 void HdlcAnalyzer::InfoAndFcsField(vector<HdlcByte> informationAndFcs)
@@ -543,9 +572,16 @@ HdlcByte HdlcAnalyzer::ByteAsyncReadByte()
 	{
 		Frame frame = CreateFrame(HDLC_ESCAPE_SEQ, ret.startSample, ret.endSample );
 		mResults->AddFrame( frame );
-		mCurrentFrameBytes.push_back( ret.value );
-		// read next byte and invert bit 5
 		ret = ByteAsyncReadByte_();
+		if( ret.value == HDLC_FLAG_VALUE ) // abort sequence = ESCAPE_BYTE + FLAG_BYTE (0x7D-0x7E)
+		{
+			mAbortFrame = true;
+		}
+		else // invert bit-5
+		{
+			ret.value = HdlcSimulationDataGenerator::Bit5Inv( ret.value );
+			mCurrentFrameBytes.push_back( ret.value );
+		}
 	}
 	return ret;
 }

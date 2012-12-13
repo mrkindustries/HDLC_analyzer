@@ -48,6 +48,7 @@ protected:
 	HdlcByte BitSyncReadByte();
 	HdlcByte BitSyncProcessFirstByteAfterFlag( HdlcByte firstAddressByte );
 	bool FlagComing();
+	bool AbortComing();
 	
 	// Byte Async Transmission functions
 	HdlcByte ByteAsyncProcessFlags();
@@ -70,12 +71,14 @@ protected:
 	U32 mSampleRateHz;
 	U32 mSamplesInHalfPeriod;
 	U32 mSamplesIn7Bits;
+	U32 mSamplesIn8Bits;
 	
 	vector<U8> mCurrentFrameBytes;
 	
 	BitState mPreviousBitState;
 	U32 mConsecutiveOnes;
 	bool mReadingFrame;
+	bool mAbortFrame;
 	
 	HdlcSimulationDataGenerator mSimulationDataGenerator;
 	bool mSimulationInitilized;
