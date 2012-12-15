@@ -6,13 +6,10 @@
 
 using namespace std;
 
-// NOTE: Assuming big endian!
 // TODO: Drop frame on error (...1111111...)!
 // TODO: Show escape bytes?
 // TODO: support ...011111101111110... (as a setting? check-box?)
-// TODO: escape + abort code?
-// TODO: abort procedure in the process function
-// TODO: Transmission of 0xFF in byte async is possible?
+// TODO: Test abort in all parts of the frame (in Simulation)
 
 HdlcAnalyzer::HdlcAnalyzer()
 :	Analyzer(),  
@@ -80,6 +77,17 @@ void HdlcAnalyzer::ProcessHDLCFrame()
 	ProcessAddressField( addressByte );
 	ProcessControlField();
 	ProcessInfoAndFcsField();
+	
+	if( mAbortFrame ) // The frame has been aborted at some point
+	{
+		mResults->AddMarker( mHdlc->GetSampleNumber(), AnalyzerResults::ErrorX, mSettings->mInputChannel );
+		if( mSettings->mTransmissionMode == HDLC_TRANSMISSION_BIT_SYNC )
+		{
+			// After abortion, synchronize again
+			mHdlc->AdvanceToNextEdge();
+		}
+	}
+	
 	mReadingFrame = false;
 	mAbortFrame = false;
 	
@@ -192,17 +200,35 @@ BitState HdlcAnalyzer::BitSyncReadBit()
 
 bool HdlcAnalyzer::FlagComing()
 {
+	// TODO: check here if tolerance
 	return !mHdlc->WouldAdvancingCauseTransition( mSamplesIn7Bits-1 ) &&
 		   mHdlc->WouldAdvancingCauseTransition( mSamplesIn7Bits );
 }
 
 bool HdlcAnalyzer::AbortComing()
 {
-	return false;
+	// At least 7 bits in 1...
+	// TODO: check here if tolerance
+	return !mHdlc->WouldAdvancingCauseTransition( mSamplesIn7Bits + mSamplesInHalfPeriod * 0.5 );
 }
 
 HdlcByte HdlcAnalyzer::BitSyncReadByte()
 {
+	if ( mReadingFrame && AbortComing() )
+	{
+			// Create "Abort Frame" frame
+			U64 startSample = mHdlc->GetSampleNumber();
+			mHdlc->Advance( mSamplesIn8Bits );
+			U64 endSample = mHdlc->GetSampleNumber();
+			
+			Frame frame = CreateFrame( HDLC_ABORT_SEQ, startSample, endSample );
+			mResults->AddFrame( frame );
+	
+			cerr << "Abort Coming!" << endl;
+			mAbortFrame = true;
+			return HdlcByte();
+	}
+	
 	if( mReadingFrame && FlagComing() )
 	{
 		U64 startSample = mHdlc->GetSampleNumber();
@@ -211,15 +237,7 @@ HdlcByte HdlcAnalyzer::BitSyncReadByte()
 		HdlcByte bs = { startSample, endSample, HDLC_FLAG_VALUE };
 		return bs;
 	}
-	else 
-	{
-		if ( AbortComing() )
-		{
-			mAbortFrame = true;
-			// TODO
-		}
-	}
-	
+
 	U64 byteValue= 0;
 	DataBuilder dbyte;
 	dbyte.Reset( &byteValue, AnalyzerEnums::LsbFirst, 8 );
@@ -361,7 +379,7 @@ void HdlcAnalyzer::ProcessControlField()
 	else // Extended Control Field
 	{
 		U64 data1=0;
-		U64 startSample, endSample;
+		U64 startSample=0, endSample=0;
 				
 		switch( mSettings->mHdlcControl )
 		{
@@ -442,11 +460,10 @@ void HdlcAnalyzer::ProcessControlField()
 vector<HdlcByte> HdlcAnalyzer::ReadProcessAndFcsField()
 {
 	vector<HdlcByte> infoAndFcs;
-	bool endOfFrame=false;
 	for( ; ; )
 	{
 		HdlcByte asyncByte = ReadByte(); if( mAbortFrame ) { return infoAndFcs; }
-		if( asyncByte.value == HDLC_FLAG_VALUE ) 
+		if( asyncByte.value == HDLC_FLAG_VALUE ) // End of frame found
 		{
 			Frame frame = CreateFrame( HDLC_FIELD_FLAG, asyncByte.startSample, 
 										asyncByte.endSample, HDLC_FLAG_END );
@@ -467,50 +484,54 @@ void HdlcAnalyzer::ProcessInfoAndFcsField()
 {
 	if( mAbortFrame )
 	{
-		mAbortFrame = false;
 		return;
 	}
-
 	vector<HdlcByte> informationAndFcs = ReadProcessAndFcsField();
-	InfoAndFcsField(informationAndFcs);
-	mAbortFrame = false;
+
+	InfoAndFcsField( informationAndFcs );
 }
 
-void HdlcAnalyzer::InfoAndFcsField(vector<HdlcByte> informationAndFcs)
+void HdlcAnalyzer::InfoAndFcsField(const vector<HdlcByte> & informationAndFcs)
 {
 	vector<HdlcByte> information = informationAndFcs;
 	vector<HdlcByte> fcs;
 	
-	// split information and fcs vector
-	switch( mSettings->mHdlcFcs )
+	if( !mAbortFrame ) 
 	{
-		case HDLC_CRC8:
+		// split information and fcs vector
+		switch( mSettings->mHdlcFcs )
 		{
-			fcs.push_back(information.back());
-			information.pop_back();
-			break;
-		}
-		case HDLC_CRC16:
-		{
-			fcs.insert(fcs.end(), information.end()-2, information.end());
-			information.erase(information.end()-2, information.end());
-			break;
-		}
-		case HDLC_CRC32:
-		{
-			fcs.insert(fcs.end(), information.end()-4, information.end());
-			information.erase(information.end()-4, information.end());
-			break;
+			case HDLC_CRC8:
+			{
+				fcs.push_back(information.back());
+				information.pop_back();
+				break;
+			}
+			case HDLC_CRC16:
+			{
+				fcs.insert(fcs.end(), information.end()-2, information.end());
+				information.erase(information.end()-2, information.end());
+				break;
+			}
+			case HDLC_CRC32:
+			{
+				fcs.insert(fcs.end(), information.end()-4, information.end());
+				information.erase(information.end()-4, information.end());
+				break;
+			}
 		}
 	}
 	
-	ProcessInformationField(information);
-	
-	// Add information bytes to the frame bytes
-	vector<U8> informationBytes = HdlcBytesToVectorBytes(information);
-	mCurrentFrameBytes.insert(mCurrentFrameBytes.end(), informationBytes.begin(), informationBytes.end());
-	
-	ProcessFcsField(fcs);
+	ProcessInformationField( information );
+		
+	if( !mAbortFrame ) 
+	{
+		// Add information bytes to the frame bytes
+		vector<U8> informationBytes = HdlcBytesToVectorBytes(information);
+		mCurrentFrameBytes.insert(mCurrentFrameBytes.end(), informationBytes.begin(), informationBytes.end());
+		
+		ProcessFcsField(fcs);
+	}
 	
 }
 
@@ -526,19 +547,9 @@ void HdlcAnalyzer::ProcessInformationField(const vector<HdlcByte> & information)
 	}
 }
 
-void HdlcAnalyzer::RemoveEscapesAndInvert()
-{
-	// TODO: process mCurrentFrameBytes removing escapes and inverting bit 5
-}
-
 void HdlcAnalyzer::ProcessFcsField(const vector<HdlcByte> & fcs)
 {
 	vector<U8> calculatedFcs;
-	
-	if( mSettings->mTransmissionMode == HDLC_TRANSMISSION_BYTE_ASYNC ) 
-	{
-		RemoveEscapesAndInvert();
-	}
 	
 	switch( mSettings->mHdlcFcs )
 	{
@@ -570,9 +581,8 @@ void HdlcAnalyzer::ProcessFcsField(const vector<HdlcByte> & fcs)
 	}
 	
 	mResults->AddFrame( frame );
-	// Put a marker in the beggining of the HDLC frame
+	// Put a marker in the end of the HDLC frame
 	mResults->AddMarker( frame.mEndingSampleInclusive, AnalyzerResults::Stop, mSettings->mInputChannel );
-
 	
 }
 
@@ -590,7 +600,7 @@ HdlcByte HdlcAnalyzer::ByteAsyncReadByte()
 		Frame frame = CreateFrame(HDLC_ESCAPE_SEQ, ret.startSample, ret.endSample );
 		mResults->AddFrame( frame );
 		ret = ByteAsyncReadByte_();
-		ret.value = HdlcSimulationDataGenerator::Bit5Inv( ret.value );
+		
 		if( ret.value == HDLC_FLAG_VALUE ) // abort sequence = ESCAPE_BYTE + FLAG_BYTE (0x7D-0x7E)
 		{
 			// Create "Abort Frame" frame
@@ -600,7 +610,8 @@ HdlcByte HdlcAnalyzer::ByteAsyncReadByte()
 		}
 		else
 		{
-			mCurrentFrameBytes.push_back( ret.value );
+			// Real data: with the bit-5 inverted (that's what we use for the crc)
+			mCurrentFrameBytes.push_back( HdlcSimulationDataGenerator::Bit5Inv( ret.value ) );
 		}
 	}
 	return ret;
@@ -617,7 +628,7 @@ HdlcByte HdlcAnalyzer::ByteAsyncReadByte_()
 	mHdlc->AdvanceToNextEdge(); // high->low transition (start bit)
 	
 	mHdlc->Advance( mSamplesInHalfPeriod * 0.5 );
-	BitState startBit = mHdlc->GetBitState(); // start bit position
+	// BitState startBit = mHdlc->GetBitState(); // start bit position
 	
 	U64 byteStartSample = mHdlc->GetSampleNumber() + mSamplesInHalfPeriod * 0.5; 
 	
@@ -636,9 +647,9 @@ HdlcByte HdlcAnalyzer::ByteAsyncReadByte_()
 	U64 byteEndSample = mHdlc->GetSampleNumber() + mSamplesInHalfPeriod * 0.5; 
  
 	mHdlc->Advance( mSamplesInHalfPeriod );
-	BitState endBit = mHdlc->GetBitState(); // stop bit position
+	// BitState endBit = mHdlc->GetBitState(); // stop bit position
 
-	HdlcByte asyncByte { byteStartSample, byteEndSample, byteValue };
+	HdlcByte asyncByte = { byteStartSample, byteEndSample, byteValue };
 	
 	return asyncByte;
 }

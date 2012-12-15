@@ -2,6 +2,7 @@
 #include "HdlcAnalyzerSettings.h"
 #include <AnalyzerHelpers.h>
 #include <cstdlib>
+#include <iostream>
 
 HdlcSimulationDataGenerator::HdlcSimulationDataGenerator()
 {
@@ -52,7 +53,7 @@ U32 HdlcSimulationDataGenerator::GenerateSimulationData( U64 largest_sample_requ
 		CreateFlag();
 		CreateFlag();
 		
-		vector<U8> address = GenAddressField(mSettings->mHdlcAddr, addressBytes, 0x7E);
+		vector<U8> address = GenAddressField(mSettings->mHdlcAddr, addressBytes, 0x0F);
 		vector<U8> control = GenControlField(frameTypes[idxFrames++%3], mSettings->mHdlcControl, 0x0F/*controlValue++*/);
 		vector<U8> information = GenInformationField(/*size++*/ 2, 0x0F/*informationValue++*/);
 		
@@ -194,20 +195,48 @@ vector<U8> HdlcSimulationDataGenerator::GenFcs( HdlcFcsType fcsType, const vecto
 	return crcRet;
 }
 
+bool HdlcSimulationDataGenerator::AbortFrame( U32 N, U32 & index ) const
+{
+	if( ( double( rand() ) / RAND_MAX ) < 0.3 ) // abort?
+	{
+		index = rand() % N;
+		return true;
+	}
+	else
+	{
+		index = 0;
+		return false;
+	}
+}
+
 void HdlcSimulationDataGenerator::TransmitBitSync( const vector<U8> & stream ) 
 {
 	// Opening flag
 	CreateFlagBitSeq();
+
+	U32 abortIndex=0;
+	bool abortFrame = AbortFrame( stream.size(), abortIndex );
 	
 	U8 consecutiveOnes = 0;
 	BitState previousBit = BIT_LOW;
 	// For each byte of the stream
+	U32 index=0;
 	for( U32 s=0; s<stream.size(); ++s) 
 	{
 		// For each bit of the byte stream
 		BitExtractor bit_extractor( stream[s], AnalyzerEnums::LsbFirst, 8 );
 		for( U32 i=0; i<8; ++i )
 		{
+			if( index == abortIndex && abortFrame )
+			{
+				// Sync bit abort sequence = 7 or more consecutive 1 
+				for(U32 j=0; j < 7; ++j)
+				{
+					CreateSyncBit( BIT_HIGH );
+				}
+				return;
+			}
+			
 			BitState bit = bit_extractor.GetNextBit();
 			CreateSyncBit( bit );
 			
@@ -237,6 +266,7 @@ void HdlcSimulationDataGenerator::TransmitBitSync( const vector<U8> & stream )
 			{
 				previousBit = bit;
 			}
+			index++;
 		}
 	}
 	
@@ -268,8 +298,19 @@ void HdlcSimulationDataGenerator::TransmitByteAsync( const vector<U8> & stream )
 	// Opening flag
 	CreateAsyncByte( HDLC_FLAG_VALUE );
 	
+	U32 abortIndex=0;
+	bool abortFrame = AbortFrame( stream.size(), abortIndex );
+	
 	for( U32 i=0; i < stream.size(); ++i )
 	{
+		if( i == abortIndex && abortFrame ) // Abort the frame: ABORT SEQUENCE = ESCAPE + FLAG
+		{
+			CreateAsyncByte( HDLC_ESCAPE_SEQ_VALUE );
+			CreateAsyncByte( HDLC_FLAG_VALUE );
+			AsyncByteFill( 7 );
+			return;
+		}
+			
 		const U8 byte = stream[i];
 		switch ( byte ) 
 		{
@@ -284,8 +325,8 @@ void HdlcSimulationDataGenerator::TransmitByteAsync( const vector<U8> & stream )
 			default:
 				CreateAsyncByte( byte );							// normal byte
 		}
-		
-		// Fill between bytes (0 to 8 bits of value 1)
+	
+		// Fill between bytes (0 to 7 bits of value 1)
 		AsyncByteFill( rand() % 8 );
 	}
 	

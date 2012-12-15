@@ -34,9 +34,7 @@ enum HdlcFlagType { HDLC_FLAG_START = 0, HDLC_FLAG_END = 1, HDLC_FLAG_FILL = 2 }
 
 // Special values for Byte Asynchronous Transmission
 #define HDLC_FLAG_VALUE 0x7E
-#define HDLC_FLAG_BIT5INV_VALUE 0x5E
 #define HDLC_ESCAPE_SEQ_VALUE 0x7D
-#define HDLC_ESCAPE_SEQ_BIT5INV_VALUE 0x5D
 #define HDLC_FILL_VALUE 0xFF
 
 /////////////////////////////////////

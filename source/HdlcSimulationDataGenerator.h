@@ -38,6 +38,7 @@ protected:
 	void AsyncByteFill( U32 N );
 	
 	// Helper functions
+	bool AbortFrame( U32 N, U32 & index ) const;
 	U64 USecsToSamples( U64 us ) const;
 	vector<U8> GenFcs( HdlcFcsType fcsType, const vector<U8> & stream ) const;
 	

@@ -37,7 +37,7 @@ protected:
 	void ProcessControlField();
 	void ProcessInfoAndFcsField();
 	vector<HdlcByte> ReadProcessAndFcsField();
-	void InfoAndFcsField(vector<HdlcByte> informationAndFcs);
+	void InfoAndFcsField(const vector<HdlcByte> & informationAndFcs);
 	void ProcessInformationField(const vector<HdlcByte> & information);
 	void ProcessFcsField(const vector<HdlcByte> & fcs);
 	HdlcByte ReadByte();
@@ -57,7 +57,6 @@ protected:
 	HdlcByte ByteAsyncReadByte_();
 	
 	// Helper functions
-	void RemoveEscapesAndInvert();
 	Frame CreateFrame( U8 mType, U64 mStartingSampleInclusive, U64 mEndingSampleInclusive, 
 					   U64 mData1=0, U64 mData2=0, U8 mFlags=0 ) const;
 	vector<U8> HdlcBytesToVectorBytes(const vector<HdlcByte> & asyncBytes) const;
