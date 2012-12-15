@@ -6,6 +6,7 @@
 HdlcAnalyzerSettings::HdlcAnalyzerSettings()
 :	mInputChannel( UNDEFINED_CHANNEL ),
 	mBitRate( 1500 ),
+	mTransmissionMode( HDLC_TRANSMISSION_BIT_SYNC ),
 	mHdlcAddr( HDLC_BASIC_ADDRESS_FIELD ),
 	mHdlcControl( HDLC_BASIC_CONTROL_FIELD ),
 	mHdlcFcs( HDLC_CRC16 )
@@ -20,6 +21,12 @@ HdlcAnalyzerSettings::HdlcAnalyzerSettings()
 	mBitRateInterface->SetMin( 1 );
 	mBitRateInterface->SetInteger( mBitRate );
 
+	mHdlcTransmissionInterface.reset( new AnalyzerSettingInterfaceNumberList() );
+	mHdlcTransmissionInterface->SetTitleAndTooltip( "Transmission Mode", "Specify the transmission mode of the HDLC frames" );
+	mHdlcTransmissionInterface->AddNumber( HDLC_TRANSMISSION_BIT_SYNC, "Bit Synchronous", "Bit-oriented transmission using bit stuffing" );
+	mHdlcTransmissionInterface->AddNumber( HDLC_TRANSMISSION_BYTE_ASYNC, "Byte Asynchronous", "Byte asynchronous transmission using byte stuffing" );
+	mHdlcTransmissionInterface->SetNumber( mTransmissionMode );
+	
 	mHdlcAddrInterface.reset( new AnalyzerSettingInterfaceNumberList() );
 	mHdlcAddrInterface->SetTitleAndTooltip( "Address Field Type", "Specify the address field type of an HDLC frame." );
 	mHdlcAddrInterface->AddNumber( HDLC_BASIC_ADDRESS_FIELD, "Basic", "Basic Address Field (8 bits)" );
@@ -39,10 +46,11 @@ HdlcAnalyzerSettings::HdlcAnalyzerSettings()
 	mHdlcFcsInterface->AddNumber( HDLC_CRC8, "CRC-8", "8-bit Cyclic Redundancy Check" );
 	mHdlcFcsInterface->AddNumber( HDLC_CRC16, "CRC-16-CCITT", "16-bit Cyclic Redundancy Check" );
 	mHdlcFcsInterface->AddNumber( HDLC_CRC32, "CRC-32", "32-bit Cyclic Redundancy Check" );
-	mHdlcFcsInterface->SetNumber( mHdlcAddr );
+	mHdlcFcsInterface->SetNumber( mHdlcFcs );
 	
 	AddInterface( mInputChannelInterface.get() );
 	AddInterface( mBitRateInterface.get() );
+	AddInterface( mHdlcTransmissionInterface.get() );
 	AddInterface( mHdlcAddrInterface.get() );
 	AddInterface( mHdlcControlInterface.get() );
 	AddInterface( mHdlcFcsInterface.get() );
@@ -52,7 +60,7 @@ HdlcAnalyzerSettings::HdlcAnalyzerSettings()
 	AddExportExtension( 0, "csv", "csv" );
 
 	ClearChannels();
-	AddChannel( mInputChannel, "Hdlc", false );
+	AddChannel( mInputChannel, "HDLC", false );
 }
 
 HdlcAnalyzerSettings::~HdlcAnalyzerSettings()
@@ -63,12 +71,13 @@ bool HdlcAnalyzerSettings::SetSettingsFromInterfaces()
 {
 	mInputChannel = mInputChannelInterface->GetChannel();
 	mBitRate = mBitRateInterface->GetInteger();
+	mTransmissionMode = HdlcTransmissionModeType( U32( mHdlcTransmissionInterface->GetNumber() ) );
 	mHdlcAddr = HdlcAddressType( U32( mHdlcAddrInterface->GetNumber() ) );
 	mHdlcControl = HdlcControlType( U32( mHdlcControlInterface->GetNumber() ) );
 	mHdlcFcs = HdlcFcsType( U32( mHdlcFcsInterface->GetNumber() ) );
 	
 	ClearChannels();
-	AddChannel( mInputChannel, "Hdlc", true );
+	AddChannel( mInputChannel, "HDLC", true );
 	
 	return true;
 }
@@ -77,6 +86,7 @@ void HdlcAnalyzerSettings::UpdateInterfacesFromSettings()
 {
 	mInputChannelInterface->SetChannel( mInputChannel );
 	mBitRateInterface->SetInteger( mBitRate );
+	mHdlcTransmissionInterface->SetNumber( mTransmissionMode );
 	mHdlcAddrInterface->SetNumber( mHdlcAddr );
 	mHdlcControlInterface->SetNumber( mHdlcControl );
 	mHdlcFcsInterface->SetNumber( mHdlcFcs );
@@ -89,12 +99,13 @@ void HdlcAnalyzerSettings::LoadSettings( const char* settings )
 
 	text_archive >> mInputChannel;
 	text_archive >> mBitRate;
+	text_archive >> *( U32* ) &mTransmissionMode;
 	text_archive >> *( U32* ) &mHdlcAddr;
 	text_archive >> *( U32* ) &mHdlcControl;
 	text_archive >> *( U32* ) &mHdlcFcs;
 
 	ClearChannels();
-	AddChannel( mInputChannel, "Hdlc", true );
+	AddChannel( mInputChannel, "HDLC", true );
 
 	UpdateInterfacesFromSettings();
 }
@@ -105,6 +116,7 @@ const char* HdlcAnalyzerSettings::SaveSettings()
 
 	text_archive << mInputChannel;
 	text_archive << mBitRate;
+	text_archive << U32( mTransmissionMode );
 	text_archive << U32( mHdlcAddr );
 	text_archive << U32( mHdlcControl );
 	text_archive << U32( mHdlcFcs );
