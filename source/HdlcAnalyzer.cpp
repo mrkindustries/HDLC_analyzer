@@ -224,7 +224,6 @@ HdlcByte HdlcAnalyzer::BitSyncReadByte()
 			Frame frame = CreateFrame( HDLC_ABORT_SEQ, startSample, endSample );
 			mResults->AddFrame( frame );
 	
-			cerr << "Abort Coming!" << endl;
 			mAbortFrame = true;
 			return HdlcByte();
 	}
@@ -245,10 +244,8 @@ HdlcByte HdlcAnalyzer::BitSyncReadByte()
 	for(U32 i=0; i<8 ; ++i)
 	{
 		BitState bit = BitSyncReadBit();
-		//cerr << ((bit == BIT_HIGH) ? 1 : 0) << " ";
 		dbyte.AddBit( bit );
 	}
-	// cerr << endl;
 	U64 endSample = mHdlc->GetSampleNumber() - mSamplesInHalfPeriod;
 	HdlcByte bs = { startSample, endSample, U8( byteValue ) };
 	return bs;
@@ -267,7 +264,6 @@ HdlcByte HdlcAnalyzer::ByteAsyncProcessFlags()
 	for( ; ; )
 	{
 		HdlcByte asyncByte = ReadByte(); 
-		//cerr << int(asyncByte.value) << endl;
 		if( asyncByte.value != HDLC_FLAG_VALUE && flagEncountered ) // NOTE: ignore non-flag bytes!
 		{
 			readBytes.push_back( asyncByte );
@@ -285,8 +281,6 @@ HdlcByte HdlcAnalyzer::ByteAsyncProcessFlags()
 		}
 
 	}
-	
-	cerr << readBytes.size() << endl;
 	
 	GenerateFlagsFrames( readBytes );
 	

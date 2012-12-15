@@ -38,9 +38,12 @@ protected:
 	void AsyncByteFill( U32 N );
 	
 	// Helper functions
-	bool AbortFrame( U32 N, U32 & index ) const;
+	bool AbortFrameAndGenIndex( U32 N );
 	U64 USecsToSamples( U64 us ) const;
 	vector<U8> GenFcs( HdlcFcsType fcsType, const vector<U8> & stream ) const;
+	
+	void GenerateAbortFramesIndexes();
+	bool ContainsElement( U32 index ) const;
 	
 	vector<U8> GenAddressField( HdlcAddressType addressType, U64 addressBytes, U8 value ) const;
 	vector<U8> GenControlField( HdlcFrameType frameType, HdlcControlType controlType, U8 value ) const;
@@ -49,6 +52,10 @@ protected:
 	HdlcAnalyzerSettings* mSettings;
 	U32 mSimulationSampleRateHz;
 	
+	vector<U32> mAbortFramesIndexes;
+	U32 mFrameNumber;
+	U32 mAbortByte;
+		
 	SimulationChannelDescriptor mHdlcSimulationData;
 	
 	U64 mSamplesInHalfPeriod;
