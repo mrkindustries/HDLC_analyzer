@@ -57,6 +57,7 @@ protected:
 	HdlcByte ByteAsyncReadByte_();
 	
 	// Helper functions
+	HdlcFrameType GetFrameType( U8 value ) const;
 	Frame CreateFrame( U8 mType, U64 mStartingSampleInclusive, U64 mEndingSampleInclusive, 
 					   U64 mData1=0, U64 mData2=0, U8 mFlags=0 ) const;
 	vector<U8> HdlcBytesToVectorBytes(const vector<HdlcByte> & asyncBytes) const;

@@ -55,6 +55,8 @@ protected:
 	vector<U32> mAbortFramesIndexes;
 	U32 mFrameNumber;
 	U32 mAbortByte;
+	bool mFirstFlag;
+	bool mLastFlag;
 		
 	SimulationChannelDescriptor mHdlcSimulationData;
 	

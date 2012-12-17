@@ -35,13 +35,11 @@ void HdlcAnalyzerResults::GenBubbleText( U64 frame_index, DisplayBase display_ba
 			break;
 		case HDLC_FIELD_BASIC_ADDRESS:
 		case HDLC_FIELD_EXTENDED_ADDRESS:
-			GenAddressFieldString(frame, display_base, tabular);
+			GenAddressFieldString( frame, display_base, tabular );
 			break;
 		case HDLC_FIELD_BASIC_CONTROL:
-			GenControlFieldString(frame, display_base, tabular);
-			break;
 		case HDLC_FIELD_EXTENDED_CONTROL:
-			GenControlFieldString(frame, display_base, tabular);
+			GenControlFieldString( frame, display_base, tabular );
 			break;
 		case HDLC_FIELD_INFORMATION:
 			GenInformationFieldString(frame, display_base, tabular);
@@ -114,18 +112,27 @@ void HdlcAnalyzerResults::GenInformationFieldString(const Frame & frame, const D
 	AddResultString( "Info ", numberStr, " [", informationStr ,"]" );
 }
 
-// TODO: Show type of frame I, U or S  and extended or basic
 void HdlcAnalyzerResults::GenControlFieldString( const Frame & frame, DisplayBase display_base, bool tabular )
 {
 	char number_str[128];
 	AnalyzerHelpers::GetNumberString( frame.mData1, display_base, 16, number_str, 128 );
 	
+	char* frameTypeStr=0;
+	switch( frame.mData2 )
+	{
+		case HDLC_I_FRAME: frameTypeStr = "I"; break;
+		case HDLC_S_FRAME: frameTypeStr = "S"; break;
+		case HDLC_U_FRAME: frameTypeStr = "U"; break;
+	}
+	
 	if( !tabular ) 
 	{
+		AddResultString( "C" );
 		AddResultString( "CTL" );
 		AddResultString( "CTL [", number_str, "]" );
+		AddResultString( "CTL [", number_str, "] - ", frameTypeStr, "-frame" );
 	}
-	AddResultString( "Control [", number_str, "]" );
+	AddResultString( "Control [", number_str, "] - ", frameTypeStr, "-frame" );
 }
 
 // TODO: show algorithm CRC8,16,32 and show success or wrong crc

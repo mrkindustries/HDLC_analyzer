@@ -28,6 +28,8 @@ void HdlcSimulationDataGenerator::Initialize( U32 simulation_sample_rate, HdlcAn
 	GenerateAbortFramesIndexes();
 	mAbortByte = 0;
 	mFrameNumber = 0;	
+	mFirstFlag = true;
+	mLastFlag = false;
 }
 
 U64 HdlcSimulationDataGenerator::USecsToSamples( U64 us ) const
@@ -76,9 +78,12 @@ U32 HdlcSimulationDataGenerator::GenerateSimulationData( U64 largest_sample_requ
 		CreateFlag();
 		CreateFlag();
 		
+		HdlcFrameType frameType = frameTypes[mFrameNumber%3];
+		U32 sizeOfInformation = (frameType == HDLC_S_FRAME) ? 0 : 2; 
+		
 		vector<U8> address = GenAddressField(mSettings->mHdlcAddr, addressBytes, 0x0F);
-		vector<U8> control = GenControlField(frameTypes[mFrameNumber%3], mSettings->mHdlcControl, 0x0F/*controlValue++*/);
-		vector<U8> information = GenInformationField(/*size++*/ 2, 0x0F/*informationValue++*/);
+		vector<U8> control = GenControlField(frameType, mSettings->mHdlcControl, 0x00/*controlValue++*/);
+		vector<U8> information = GenInformationField(sizeOfInformation, 0x0F/*informationValue++*/);
 		
 		CreateHDLCFrame( address, control, information );
 		
@@ -138,7 +143,7 @@ vector<U8> HdlcSimulationDataGenerator::GenControlField( HdlcFrameType frameType
 		case HDLC_S_FRAME:
 		{
 			// first byte
-			U8 ctrl = value | U8(frameType);
+			U8 ctrl = value | U8( frameType );
 			controlRet.push_back(ctrl);
 			switch( controlType ) 
 			{
@@ -164,7 +169,7 @@ vector<U8> HdlcSimulationDataGenerator::GenControlField( HdlcFrameType frameType
 		}
 		case HDLC_U_FRAME: // U frames are always of 8 bits 
 		{
-			U8 ctrl = value | U8(HDLC_U_FRAME);
+			U8 ctrl = value | U8( HDLC_U_FRAME );
 			controlRet.push_back(ctrl);
 			break;
 		}
@@ -225,6 +230,11 @@ void HdlcSimulationDataGenerator::TransmitBitSync( const vector<U8> & stream )
 	// Opening flag
 	CreateFlagBitSeq();
 	
+	if( mSettings->mSharedZero ) // If shared zero, then advance for the start of the frame
+	{
+		mHdlcSimulationData.Advance( mSamplesInHalfPeriod );
+	}
+	
 	bool abortFrame = ContainsElement( mFrameNumber );
 	
 	U8 consecutiveOnes = 0;
@@ -237,7 +247,6 @@ void HdlcSimulationDataGenerator::TransmitBitSync( const vector<U8> & stream )
 		bool abortThisByte = (mAbortByte == s);
 		if( abortFrame && abortThisByte )
 		{
-			cerr << "Hi there..." << endl;
 			// Sync bit abort sequence = 7 or more consecutive 1 
 			for(U32 j=0; j < 7; ++j)
 			{
@@ -284,6 +293,7 @@ void HdlcSimulationDataGenerator::TransmitBitSync( const vector<U8> & stream )
 		}
 	}
 	
+	mLastFlag = true;
 	// Closing flag
 	CreateFlagBitSeq();
 
@@ -291,10 +301,22 @@ void HdlcSimulationDataGenerator::TransmitBitSync( const vector<U8> & stream )
 
 void HdlcSimulationDataGenerator::CreateFlagBitSeq() 
 {
-	mHdlcSimulationData.Transition();
+	if( !mSettings->mSharedZero || (mSettings->mSharedZero && (mFirstFlag || mLastFlag)) ) // If not shared zero
+	{
+		mHdlcSimulationData.Transition();
+	}
+	
 	mHdlcSimulationData.Advance( mSamplesInHalfPeriod * 7 );
 	mHdlcSimulationData.Transition();
-	mHdlcSimulationData.Advance( mSamplesInHalfPeriod );
+	
+	if( !mSettings->mSharedZero ) // If not shared zero
+	{
+		mHdlcSimulationData.Advance( mSamplesInHalfPeriod );
+	}
+
+	mFirstFlag = false;
+	mLastFlag = false;
+
 }
 
 // Maps the bit to the signal using NRZI 
@@ -358,7 +380,7 @@ void HdlcSimulationDataGenerator::AsyncByteFill( U32 N )
 	{
 		mHdlcSimulationData.Transition();
 	}
-	// Fill N high periods
+	// 1) Fill N high periods
 	mHdlcSimulationData.Advance( mSamplesInHalfPeriod * N );
 }
 
