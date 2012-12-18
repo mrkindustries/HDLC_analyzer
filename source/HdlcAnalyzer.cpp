@@ -4,6 +4,8 @@
 #include <AnalyzerHelpers.h>
 #include <iostream>
 
+// TODO: Adjust AbortComing() and FrameComing()
+
 using namespace std;
 
 HdlcAnalyzer::HdlcAnalyzer()
@@ -577,7 +579,7 @@ void HdlcAnalyzer::ProcessInformationField(const vector<HdlcByte> & information)
 		Frame frame = CreateFrame( HDLC_FIELD_INFORMATION, byte.startSample, 
 								   byte.endSample, byte.value, i);
 		mResults->AddFrame( frame );
-		mCurrentFrameBytes.push_back(byte.value); // append control byte
+		mCurrentFrameBytes.push_back( byte.value ); // append control byte
 	}
 }
 
