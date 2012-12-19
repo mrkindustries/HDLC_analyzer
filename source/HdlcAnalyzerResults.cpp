@@ -29,7 +29,7 @@ void HdlcAnalyzerResults::GenBubbleText( U64 frame_index, DisplayBase display_ba
 	switch( frame.mType ) 
 	{
 		case HDLC_FIELD_FLAG: 
-			GenFlagFieldString(frame, tabular);
+			GenFlagFieldString( frame, tabular );
 			break;
 		case HDLC_FIELD_BASIC_ADDRESS:
 		case HDLC_FIELD_EXTENDED_ADDRESS:
@@ -40,22 +40,22 @@ void HdlcAnalyzerResults::GenBubbleText( U64 frame_index, DisplayBase display_ba
 			GenControlFieldString( frame, display_base, tabular );
 			break;
 		case HDLC_FIELD_INFORMATION:
-			GenInformationFieldString(frame, display_base, tabular);
+			GenInformationFieldString( frame, display_base, tabular );
 			break;
 		case HDLC_FIELD_FCS:
-			GenFcsFieldString(frame, display_base, tabular);
+			GenFcsFieldString( frame, display_base, tabular );
 			break;
 		case HDLC_ESCAPE_SEQ:
-			GenEscapeFieldString(tabular);
+			GenEscapeFieldString( tabular );
 			break;
 		case HDLC_ABORT_SEQ:
-			GenAbortFieldString(tabular);
+			GenAbortFieldString( tabular );
 			break;
 
 	}
 }
 
-void HdlcAnalyzerResults::GenFlagFieldString(const Frame & frame, bool tabular) 
+void HdlcAnalyzerResults::GenFlagFieldString( const Frame & frame, bool tabular ) 
 {
 	char* flagTypeStr=0;
 	switch( frame.mData1 )
@@ -67,15 +67,15 @@ void HdlcAnalyzerResults::GenFlagFieldString(const Frame & frame, bool tabular)
 	
 	if( !tabular ) 
 	{
-		AddResultString("F");
-		AddResultString("FL");
-		AddResultString("FLAG");
-		AddResultString(flagTypeStr, " FLAG");
+		AddResultString( "F" );
+		AddResultString( "FL" );
+		AddResultString( "FLAG" );
+		AddResultString( flagTypeStr, " FLAG" );
 	}
-	AddResultString(flagTypeStr, " Flag Delimiter");
+	AddResultString( flagTypeStr, " Flag Delimiter" );
 }
 
-void HdlcAnalyzerResults::GenAddressFieldString(const Frame & frame, DisplayBase display_base, bool tabular) 
+void HdlcAnalyzerResults::GenAddressFieldString( const Frame & frame, DisplayBase display_base, bool tabular ) 
 {
 	char addressStr[64];
 	AnalyzerHelpers::GetNumberString( frame.mData1, display_base, 8, addressStr, 64 );
@@ -92,7 +92,7 @@ void HdlcAnalyzerResults::GenAddressFieldString(const Frame & frame, DisplayBase
 	AddResultString( "Address ", byteNumber , "[", addressStr, "]" );
 }
 
-void HdlcAnalyzerResults::GenInformationFieldString(const Frame & frame, const DisplayBase display_base,
+void HdlcAnalyzerResults::GenInformationFieldString( const Frame & frame, const DisplayBase display_base,
 													bool tabular ) 
 {
 	
@@ -151,7 +151,7 @@ void HdlcAnalyzerResults::GenFcsFieldString( const Frame & frame, DisplayBase di
 	AnalyzerHelpers::GetNumberString( frame.mData1, display_base, 16, number_str, 128 );
 	*/
 		
-	if ( frame.mFlags & DISPLAY_AS_ERROR_FLAG ) 
+	if( frame.mFlags & DISPLAY_AS_ERROR_FLAG ) 
 	{
 		if( !tabular ) 
 		{

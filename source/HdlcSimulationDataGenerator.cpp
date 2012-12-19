@@ -22,7 +22,7 @@ void HdlcSimulationDataGenerator::Initialize( U32 simulation_sample_rate, HdlcAn
 	mHdlcSimulationData.SetSampleRate( simulation_sample_rate );
 	mHdlcSimulationData.SetInitialBitState( BIT_LOW );
 	
-	double halfPeriod = (1.0 / double( mSettings->mBitRate * 2 )) * 1000000.0; 	// half period in useconds.
+	double halfPeriod = (1.0 / double( mSettings->mBitRate * 2 ) ) * 1000000.0; 	// half period in useconds.
 	mSamplesInHalfPeriod = USecsToSamples( halfPeriod );		 				// number of samples in a half period.
 	
 	mHdlcSimulationData.Advance( mSamplesInHalfPeriod * 8 );	 				// Advance 4 periods
@@ -31,7 +31,7 @@ void HdlcSimulationDataGenerator::Initialize( U32 simulation_sample_rate, HdlcAn
 	mFrameNumber = 0;	
 	mFirstFlag = true;
 	mLastFlag = false;
-	mWrongFramesSeparation = ( rand() % 15 ) + 15; // [15..30]
+	mWrongFramesSeparation = ( rand() % 10 ) + 10; // [15..30]
 }
 
 U64 HdlcSimulationDataGenerator::USecsToSamples( U64 us ) const
@@ -41,19 +41,19 @@ U64 HdlcSimulationDataGenerator::USecsToSamples( U64 us ) const
 
 void HdlcSimulationDataGenerator::GenerateAbortFramesIndexes()
 {
-	mAbortFramesIndexes.push_back(rand() % 50);
-	mAbortFramesIndexes.push_back(rand() % 50);
-	mAbortFramesIndexes.push_back(rand() % 50);
-	mAbortFramesIndexes.push_back(rand() % 50);
-	mAbortFramesIndexes.push_back(rand() % 50);
-	mAbortFramesIndexes.push_back(rand() % 50);
+	mAbortFramesIndexes.push_back( rand() % 50 );
+	mAbortFramesIndexes.push_back( rand() % 50 );
+	mAbortFramesIndexes.push_back( rand() % 50 );
+	mAbortFramesIndexes.push_back( rand() % 50 );
+	mAbortFramesIndexes.push_back( rand() % 50 );
+	mAbortFramesIndexes.push_back( rand() % 50 );
 }
 
 bool HdlcSimulationDataGenerator::ContainsElement( U32 index ) const
 {
-	for(U32 i=0; i < mAbortFramesIndexes.size(); ++i)
+	for( U32 i=0; i < mAbortFramesIndexes.size(); ++i )
 	{
-		if ( mAbortFramesIndexes.at(i) == index )
+		if( mAbortFramesIndexes.at(i) == index )
 		{
 			return true;
 		}
@@ -81,11 +81,11 @@ U32 HdlcSimulationDataGenerator::GenerateSimulationData( U64 largest_sample_requ
 		CreateFlag();
 		
 		HdlcFrameType frameType = frameTypes[mFrameNumber%3];
-		U32 sizeOfInformation = (frameType == HDLC_S_FRAME) ? 0 : 1; 
+		U32 sizeOfInformation = ( frameType == HDLC_S_FRAME ) ? 0 : 1; 
 		
-		vector<U8> address = GenAddressField(mSettings->mHdlcAddr, addressBytes, 0x00);
-		vector<U8> control = GenControlField(frameType, mSettings->mHdlcControl, 0x00/*controlValue++*/);
-		vector<U8> information = GenInformationField(sizeOfInformation, 0x00/*informationValue++*/);
+		vector<U8> address = GenAddressField( mSettings->mHdlcAddr, addressBytes, 0x00);
+		vector<U8> control = GenControlField( frameType, mSettings->mHdlcControl, 0x00/*controlValue++*/);
+		vector<U8> information = GenInformationField( sizeOfInformation, 0x00/*informationValue++*/);
 		
 		CreateHDLCFrame( address, control, information );
 		
@@ -146,25 +146,25 @@ vector<U8> HdlcSimulationDataGenerator::GenControlField( HdlcFrameType frameType
 		{
 			// first byte
 			U8 ctrl = value | U8( frameType );
-			controlRet.push_back(ctrl);
+			controlRet.push_back( ctrl );
 			switch( controlType ) 
 			{
 				case HDLC_EXTENDED_CONTROL_FIELD_MOD_128:
-					controlRet.push_back(value); // second byte
+					controlRet.push_back( value ); // second byte
 					break;
 				case HDLC_EXTENDED_CONTROL_FIELD_MOD_32768:
-					controlRet.push_back(value); // second byte
-					controlRet.push_back(value); // third byte
-					controlRet.push_back(value); // fourth byte
+					controlRet.push_back( value ); // second byte
+					controlRet.push_back( value ); // third byte
+					controlRet.push_back( value ); // fourth byte
 					break;
 				case HDLC_EXTENDED_CONTROL_FIELD_MOD_2147483648: 
-					controlRet.push_back(value); // second byte
-					controlRet.push_back(value); // third byte
-					controlRet.push_back(value); // fourth byte
-					controlRet.push_back(value); // fifth byte
-					controlRet.push_back(value); // sixth byte
-					controlRet.push_back(value); // seventh byte
-					controlRet.push_back(value); // eighth byte
+					controlRet.push_back( value ); // second byte
+					controlRet.push_back( value ); // third byte
+					controlRet.push_back( value ); // fourth byte
+					controlRet.push_back( value ); // fifth byte
+					controlRet.push_back( value ); // sixth byte
+					controlRet.push_back( value ); // seventh byte
+					controlRet.push_back( value ); // eighth byte
 					break;
 			}
 			break;
@@ -172,7 +172,7 @@ vector<U8> HdlcSimulationDataGenerator::GenControlField( HdlcFrameType frameType
 		case HDLC_U_FRAME: // U frames are always of 8 bits 
 		{
 			U8 ctrl = value | U8( HDLC_U_FRAME );
-			controlRet.push_back(ctrl);
+			controlRet.push_back( ctrl );
 			break;
 		}
 	}
@@ -181,7 +181,7 @@ vector<U8> HdlcSimulationDataGenerator::GenControlField( HdlcFrameType frameType
 	
 vector<U8> HdlcSimulationDataGenerator::GenInformationField( U16 size, U8 value ) const
 {
-	vector<U8> informationRet(size, value);
+	vector<U8> informationRet( size, value );
 	return informationRet;
 }
 
@@ -190,7 +190,7 @@ void HdlcSimulationDataGenerator::ModifySomeBits( vector<U8> & allFields ) const
 	// Wrong data after 14 frames
 	if( ( mFrameNumber + 1 ) % mWrongFramesSeparation == 0 )
 	{
-		if (!allFields.empty())
+		if( !allFields.empty() )
 		{
 			// Choose a byte to modify
 			U32 index = rand() % allFields.size();
@@ -204,24 +204,24 @@ void HdlcSimulationDataGenerator::CreateHDLCFrame( const vector<U8> & address, c
 {
 	vector<U8> allFields; 
 	
-	allFields.insert(allFields.end(), address.begin(), address.end());
-	allFields.insert(allFields.end(), control.begin(), control.end());
-	allFields.insert(allFields.end(), information.begin(), information.end());
+	allFields.insert( allFields.end(), address.begin(), address.end() );
+	allFields.insert( allFields.end(), control.begin(), control.end() );
+	allFields.insert( allFields.end(), information.begin(), information.end() );
 	
 	// Calculate the crc of the address, control and data fields
-	vector<U8> fcs = GenFcs(mSettings->mHdlcFcs, allFields);
-	allFields.insert(allFields.end(), fcs.begin(), fcs.end());
+	vector<U8> fcs = GenFcs( mSettings->mHdlcFcs, allFields );
+	allFields.insert( allFields.end(), fcs.begin(), fcs.end() );
 	
 	ModifySomeBits( allFields );
 	
 	// Transmit the frame in bit-sync or byte-async
 	if( mSettings->mTransmissionMode == HDLC_TRANSMISSION_BIT_SYNC )
 	{
-		TransmitBitSync(allFields);
+		TransmitBitSync( allFields );
 	}
 	else
 	{
-		TransmitByteAsync(allFields);
+		TransmitByteAsync( allFields );
 	}
 }
 
@@ -262,11 +262,11 @@ void HdlcSimulationDataGenerator::TransmitBitSync( const vector<U8> & stream )
 	for( U32 s=0; s<stream.size(); ++s) 
 	{
 		
-		bool abortThisByte = (mAbortByte == s);
+		bool abortThisByte = ( mAbortByte == s );
 		if( abortFrame && abortThisByte )
 		{
 			// Sync bit abort sequence = 7 or more consecutive 1 
-			for(U32 j=0; j < 7; ++j)
+			for( U32 j=0; j < 7; ++j )
 			{
 				CreateSyncBit( BIT_HIGH );
 			}
@@ -319,7 +319,7 @@ void HdlcSimulationDataGenerator::TransmitBitSync( const vector<U8> & stream )
 
 void HdlcSimulationDataGenerator::CreateFlagBitSeq() 
 {
-	if( !mSettings->mSharedZero || (mSettings->mSharedZero && (mFirstFlag || mLastFlag)) ) // If not shared zero
+	if( !mSettings->mSharedZero || ( mSettings->mSharedZero && ( mFirstFlag || mLastFlag ) ) ) // If not shared zero
 	{
 		mHdlcSimulationData.Transition();
 	}
@@ -443,21 +443,21 @@ vector<BitState> HdlcSimulationDataGenerator::BytesVectorToBitsVector( const vec
 	U8 byte;
 	bool getByte = true;
 	U8 bytePos = 0x80;
-	for(U32 i=0; i < numberOfBits; ++i)
+	for( U32 i=0; i < numberOfBits; ++i )
 	{
 		if( getByte )
 		{
-			byte = v.at(vectorIndex);
+			byte = v.at( vectorIndex );
 			bytePos = 0x80;
 			vectorIndex++;
 		}
 		
 		BitState bit = ( byte & bytePos ) ? BIT_HIGH : BIT_LOW;
-		bitsRet.push_back(bit);
+		bitsRet.push_back( bit );
 		
 		bytePos >>= 1;
 		
-		getByte = ((i+1) % 8 == 0);
+		getByte = ( ( i+1 ) % 8 == 0 );
 		
 	}
 	
@@ -468,7 +468,7 @@ vector<U8> HdlcSimulationDataGenerator::CrcDivision( const vector<U8> & stream, 
 {
 	
 	vector<BitState> dataBits = BytesVectorToBitsVector( stream, stream.size() * 8 );
-	vector<BitState> polyBits = BytesVectorToBitsVector( genPoly, crcNumber+1 );
+	vector<BitState> polyBits = BytesVectorToBitsVector( genPoly, crcNumber + 1 );
 
 	/*
 	cerr << "Data Bits:" << endl;
@@ -479,7 +479,8 @@ vector<U8> HdlcSimulationDataGenerator::CrcDivision( const vector<U8> & stream, 
 	*/
 		
 	U32 dataIndex=0;
-	while( dataIndex < dataBits.size() - (polyBits.size() - 1) )
+	U32 dataLimit = dataBits.size() - ( polyBits.size() - 1 );
+	while( dataIndex < dataLimit )
 	{
 		
 		// Advance one-position or 0-bits
@@ -487,14 +488,14 @@ vector<U8> HdlcSimulationDataGenerator::CrcDivision( const vector<U8> & stream, 
 		while( zeroBits )
 		{
 			zeroBits = ( ( dataBits.at( dataIndex ) == BIT_LOW ) && 
-					     ( dataIndex < dataBits.size() - (polyBits.size() - 1) ) );
+					     ( dataIndex < dataLimit ) );
 			if( zeroBits ) 
 			{
 				dataIndex++;
 			}
 		}
 		
-		if( dataIndex < dataBits.size() - (polyBits.size() - 1) )
+		if( dataIndex < dataLimit )
 		{
 			for( U32 bitIndex = 0; bitIndex < polyBits.size(); ++bitIndex )
 			{
@@ -540,18 +541,18 @@ vector<U8> HdlcSimulationDataGenerator::Crc8( const vector<U8> & stream, const v
 	vector<U8> result = stream;
 	if( append.empty() )
 	{
-		result.push_back(0x00);
+		result.push_back( 0x00 );
 	}
 	else
 	{
-		result.insert(result.end(), append.begin(), append.end());
+		result.insert( result.end(), append.begin(), append.end() );
 	}
 
 	// ISO/IEC 13239:2002(E) page 14
 	// CRC8 Divisor (9 bits) - x**8 + x**2 + x + 1
 	vector<U8> divisor;
-	divisor.push_back(0x83);
-	divisor.push_back(0x80);
+	divisor.push_back( 0x83 );
+	divisor.push_back( 0x80 );
 	
 	vector<U8> crc8Ret = CrcDivision( result, divisor, 8 );
 	return crc8Ret;
@@ -560,23 +561,23 @@ vector<U8> HdlcSimulationDataGenerator::Crc8( const vector<U8> & stream, const v
 vector<U8> HdlcSimulationDataGenerator::Crc16( const vector<U8> & stream, const vector<U8> & append )
 {
 	vector<U8> result = stream;
-	if (append.empty())
+	if( append.empty() )
 	{
 		// Append 16 0-bits
-		result.push_back(0x00);
-		result.push_back(0x00);
+		result.push_back( 0x00 );
+		result.push_back( 0x00 );
 	}
 	else
 	{
-		result.insert(result.end(), append.begin(), append.end());
+		result.insert( result.end(), append.begin(), append.end() );
 	}
 	
 	// ISO/IEC 13239:2002(E) page 14
 	// CRC16 Divisor (17 bits) - x**16 + x**12 + x**5 + 1 (0x1021)
 	vector<U8> divisor;
-	divisor.push_back(0x88);
-	divisor.push_back(0x10);
-	divisor.push_back(0x80);
+	divisor.push_back( 0x88 );
+	divisor.push_back( 0x10 );
+	divisor.push_back( 0x80 );
 	
 	vector<U8> crc16Ret = CrcDivision( result, divisor, 16 );
 	return crc16Ret;
@@ -588,24 +589,24 @@ vector<U8> HdlcSimulationDataGenerator::Crc32( const vector<U8> & stream, const 
 	if( append.empty() )
 	{
 		// Append 32 0-bits 
-		result.push_back(0x00);
-		result.push_back(0x00);
-		result.push_back(0x00);
-		result.push_back(0x00);
+		result.push_back( 0x00 );
+		result.push_back( 0x00 );
+		result.push_back( 0x00 );
+		result.push_back( 0x00 );
 	}
 	else
 	{
-		result.insert(result.end(), append.begin(), append.end());
+		result.insert( result.end(), append.begin(), append.end() );
 	}
 
 	// ISO/IEC 13239:2002(E) page 13
 	// CRC32 Divisor (33 bits)
 	vector<U8> divisor;
-	divisor.push_back(0x82);
-	divisor.push_back(0x60);
-	divisor.push_back(0x8E);
-	divisor.push_back(0xDB);
-	divisor.push_back(0x80);
+	divisor.push_back( 0x82 );
+	divisor.push_back( 0x60 );
+	divisor.push_back( 0x8E );
+	divisor.push_back( 0xDB );
+	divisor.push_back( 0x80 );
 	
 	vector<U8> crc32Ret = CrcDivision( result, divisor, 32 );
 	return crc32Ret;

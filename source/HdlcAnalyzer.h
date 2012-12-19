@@ -37,9 +37,9 @@ protected:
 	void ProcessControlField();
 	void ProcessInfoAndFcsField();
 	vector<HdlcByte> ReadProcessAndFcsField();
-	void InfoAndFcsField(const vector<HdlcByte> & informationAndFcs);
-	void ProcessInformationField(const vector<HdlcByte> & information);
-	void ProcessFcsField(const vector<HdlcByte> & fcs);
+	void InfoAndFcsField( const vector<HdlcByte> & informationAndFcs );
+	void ProcessInformationField( const vector<HdlcByte> & information );
+	void ProcessFcsField( const vector<HdlcByte> & fcs );
 	HdlcByte ReadByte();
 	
 	// Bit Sync Transmission functions
@@ -61,8 +61,8 @@ protected:
 	HdlcFrameType GetFrameType( U8 value ) const;
 	Frame CreateFrame( U8 mType, U64 mStartingSampleInclusive, U64 mEndingSampleInclusive, 
 					   U64 mData1=0, U64 mData2=0, U8 mFlags=0 ) const;
-	vector<U8> HdlcBytesToVectorBytes(const vector<HdlcByte> & asyncBytes) const;
-	U64 VectorToValue(const vector<U8> & v) const;
+	vector<U8> HdlcBytesToVectorBytes( const vector<HdlcByte> & asyncBytes ) const;
+	U64 VectorToValue( const vector<U8> & v ) const;
 	
 protected:
 	
