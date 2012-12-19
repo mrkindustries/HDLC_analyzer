@@ -67,7 +67,6 @@ U32 HdlcSimulationDataGenerator::GenerateSimulationData( U64 largest_sample_requ
 
 	srand( time( NULL ) );
 	
-	U8 value=0;
 	U16 size=0;
 	U8 informationValue=0;
 	U8 controlValue=0;
@@ -140,13 +139,15 @@ vector<U8> HdlcSimulationDataGenerator::GenControlField( HdlcFrameType frameType
 														 U8 value ) const
 {
 	vector<U8> controlRet;
+	U8 ctrl;
 	switch( frameType ) 
 	{
 		case HDLC_I_FRAME: 
+			ctrl = ( value & 0xFE ) | U8( frameType );
 		case HDLC_S_FRAME:
 		{
 			// first byte
-			U8 ctrl = value | U8( frameType );
+			ctrl = ( value & 0xFD ) | U8( frameType );
 			controlRet.push_back( ctrl );
 			switch( controlType ) 
 			{
@@ -172,7 +173,7 @@ vector<U8> HdlcSimulationDataGenerator::GenControlField( HdlcFrameType frameType
 		}
 		case HDLC_U_FRAME: // U frames are always of 8 bits 
 		{
-			U8 ctrl = value | U8( HDLC_U_FRAME );
+			ctrl = value | U8( HDLC_U_FRAME );
 			controlRet.push_back( ctrl );
 			break;
 		}
