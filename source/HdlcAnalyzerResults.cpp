@@ -77,9 +77,9 @@ void HdlcAnalyzerResults::GenFlagFieldString( const Frame & frame, bool tabular 
 
 void HdlcAnalyzerResults::GenAddressFieldString( const Frame & frame, DisplayBase display_base, bool tabular ) 
 {
-	char addressStr[64];
+	char addressStr[ 64 ];
 	AnalyzerHelpers::GetNumberString( frame.mData1, display_base, 8, addressStr, 64 );
-	char byteNumber[64];
+	char byteNumber[ 64 ];
 	AnalyzerHelpers::GetNumberString( frame.mData2, Decimal, 8, byteNumber, 64 );
 	
 	if( !tabular ) 
@@ -96,9 +96,9 @@ void HdlcAnalyzerResults::GenInformationFieldString( const Frame & frame, const 
 													bool tabular ) 
 {
 	
-	char informationStr[64];
+	char informationStr[ 64 ];
 	AnalyzerHelpers::GetNumberString( frame.mData1, display_base, 8, informationStr, 64 );
-	char numberStr[64];
+	char numberStr[ 64 ];
 	AnalyzerHelpers::GetNumberString( frame.mData2, Decimal, 32, numberStr, 64 );
 	
 	if( !tabular ) 
@@ -112,7 +112,7 @@ void HdlcAnalyzerResults::GenInformationFieldString( const Frame & frame, const 
 
 void HdlcAnalyzerResults::GenControlFieldString( const Frame & frame, DisplayBase display_base, bool tabular )
 {
-	char number_str[128];
+	char number_str[ 128 ];
 	AnalyzerHelpers::GetNumberString( frame.mData1, display_base, 16, number_str, 128 );
 	
 	char* frameTypeStr=0;
@@ -144,7 +144,7 @@ void HdlcAnalyzerResults::GenFcsFieldString( const Frame & frame, DisplayBase di
 		case HDLC_CRC32: fcsBits = 32; crcTypeStr= "32"; break;
 	}
 	
-	char readFcsStr[128];
+	char readFcsStr[ 128 ];
 	AnalyzerHelpers::GetNumberString( frame.mData1, display_base, fcsBits, readFcsStr, 128 );
 	/*
 	char calculatedFcsStr[128];

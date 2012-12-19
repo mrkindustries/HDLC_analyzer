@@ -53,7 +53,7 @@ bool HdlcSimulationDataGenerator::ContainsElement( U32 index ) const
 {
 	for( U32 i=0; i < mAbortFramesIndexes.size(); ++i )
 	{
-		if( mAbortFramesIndexes.at(i) == index )
+		if( mAbortFramesIndexes.at( i ) == index )
 		{
 			return true;
 		}
@@ -70,18 +70,19 @@ U32 HdlcSimulationDataGenerator::GenerateSimulationData( U64 largest_sample_requ
 	U8 value=0;
 	U16 size=0;
 	U8 informationValue=0;
-	U64 addressBytes=1;
 	U8 controlValue=0;
-	HdlcFrameType frameTypes[3] = { HDLC_I_FRAME, HDLC_S_FRAME, HDLC_U_FRAME };
+	HdlcFrameType frameTypes[ 3 ] = { HDLC_I_FRAME, HDLC_S_FRAME, HDLC_U_FRAME };
 	
 	while( mHdlcSimulationData.GetCurrentSampleNumber() < adjusted_largest_sample_requested )
 	{
+		
 		// Two consecutive flags
 		CreateFlag();
 		CreateFlag();
 		
-		HdlcFrameType frameType = frameTypes[mFrameNumber%3];
+		HdlcFrameType frameType = frameTypes[ mFrameNumber%3 ];
 		U32 sizeOfInformation = ( frameType == HDLC_S_FRAME ) ? 0 : 1; 
+		U64 addressBytes= rand() % 4;
 		
 		vector<U8> address = GenAddressField( mSettings->mHdlcAddr, addressBytes, 0x00);
 		vector<U8> control = GenControlField( frameType, mSettings->mHdlcControl, 0x00/*controlValue++*/);
@@ -124,10 +125,10 @@ vector<U8> HdlcSimulationDataGenerator::GenAddressField( HdlcAddressType address
 	}
 	else // addressType == HDLC_EXTENDED_ADDRESS_FIELD
 	{
-		for( U32 i=0; i<addressBytes; ++i ) 
+		for( U32 i=0; i < addressBytes; ++i ) 
 		{
 			U8 mask = ( i == addressBytes - 1 ) ? 0x00 : 0x01; // EA bit (Lsb is set to 1 to extend the address)
-			addrRet.push_back( value | mask );
+			addrRet.push_back( ( value & 0xFE ) | mask );
 		}
 	}
 	return addrRet;
@@ -275,7 +276,7 @@ void HdlcSimulationDataGenerator::TransmitBitSync( const vector<U8> & stream )
 		}
 		
 		// For each bit of the byte stream
-		BitExtractor bit_extractor( stream[s], AnalyzerEnums::LsbFirst, 8 );
+		BitExtractor bit_extractor( stream[ s ], AnalyzerEnums::LsbFirst, 8 );
 		for( U32 i=0; i<8; ++i )
 		{
 			BitState bit = bit_extractor.GetNextBit();
@@ -367,7 +368,7 @@ void HdlcSimulationDataGenerator::TransmitByteAsync( const vector<U8> & stream )
 			return;
 		}
 		
-		const U8 byte = stream[i];
+		const U8 byte = stream[ i ];
 		switch ( byte ) 
 		{
 			case HDLC_FLAG_VALUE: // 0x7E

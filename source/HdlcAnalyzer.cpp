@@ -303,7 +303,7 @@ void HdlcAnalyzer::GenerateFlagsFrames( vector<HdlcByte> readBytes )
 	// 2) Generate the flag frames and return non-flag byte after the flags
 	for( U32 i=0; i<readBytes.size()-1; ++i )
 	{
-		HdlcByte asyncByte = readBytes[i];
+		HdlcByte asyncByte = readBytes[ i ];
 		
 		Frame frame = CreateFrame( HDLC_FIELD_FLAG, asyncByte.startSample, asyncByte.endSample );
 		
@@ -349,7 +349,7 @@ void HdlcAnalyzer::ProcessAddressField( HdlcByte byteAfterFlag )
 			mResults->AddFrame( frame );
 			mCurrentFrameBytes.push_back( addressByte.value );
 
-			U8 lsbBit = byteAfterFlag.value & 0x01;
+			U8 lsbBit = addressByte.value & 0x01;
 			if( !lsbBit ) // End of Extended Address Field?
 			{
 				return;
@@ -736,7 +736,7 @@ vector<U8> HdlcAnalyzer::HdlcBytesToVectorBytes( const vector<HdlcByte> & asyncB
 	vector<U8> ret;
 	for( U32 i=0; i < asyncBytes.size(); ++i )
 	{
-		ret.push_back( asyncBytes[i].value );
+		ret.push_back( asyncBytes[ i ].value );
 	}
 	return ret;
 }
