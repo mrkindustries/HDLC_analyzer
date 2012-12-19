@@ -57,6 +57,7 @@ public:
 	HdlcAddressType mHdlcAddr;
 	HdlcControlType mHdlcControl;	
 	HdlcFcsType mHdlcFcs;
+	bool mSharedZero;
 	
 	
 protected:
@@ -66,6 +67,7 @@ protected:
 	std::auto_ptr< AnalyzerSettingInterfaceNumberList >	mHdlcTransmissionInterface;
 	std::auto_ptr< AnalyzerSettingInterfaceNumberList >	mHdlcControlInterface;
 	std::auto_ptr< AnalyzerSettingInterfaceNumberList >	mHdlcFcsInterface;
+	std::auto_ptr< AnalyzerSettingInterfaceBool > mHdlcSharedZeroInterface;
 };
 
 #endif //HDLC_ANALYZER_SETTINGS

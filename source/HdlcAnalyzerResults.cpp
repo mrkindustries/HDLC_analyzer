@@ -5,8 +5,6 @@
 #include <iostream>
 #include <fstream>
 
-// NOTE: If the Bubble has >30 characters, there is a bug and the bubbles dissapears/appears
-
 HdlcAnalyzerResults::HdlcAnalyzerResults( HdlcAnalyzer* analyzer, HdlcAnalyzerSettings* settings )
 :	AnalyzerResults(),
 	mSettings( settings ),
@@ -31,35 +29,33 @@ void HdlcAnalyzerResults::GenBubbleText( U64 frame_index, DisplayBase display_ba
 	switch( frame.mType ) 
 	{
 		case HDLC_FIELD_FLAG: 
-			GenFlagFieldString(frame, tabular);
+			GenFlagFieldString( frame, tabular );
 			break;
 		case HDLC_FIELD_BASIC_ADDRESS:
 		case HDLC_FIELD_EXTENDED_ADDRESS:
-			GenAddressFieldString(frame, display_base, tabular);
+			GenAddressFieldString( frame, display_base, tabular );
 			break;
 		case HDLC_FIELD_BASIC_CONTROL:
-			GenControlFieldString(frame, display_base, tabular);
-			break;
 		case HDLC_FIELD_EXTENDED_CONTROL:
-			GenControlFieldString(frame, display_base, tabular);
+			GenControlFieldString( frame, display_base, tabular );
 			break;
 		case HDLC_FIELD_INFORMATION:
-			GenInformationFieldString(frame, display_base, tabular);
+			GenInformationFieldString( frame, display_base, tabular );
 			break;
 		case HDLC_FIELD_FCS:
-			GenFcsFieldString(frame, display_base, tabular);
+			GenFcsFieldString( frame, display_base, tabular );
 			break;
 		case HDLC_ESCAPE_SEQ:
-			GenEscapeFieldString(tabular);
+			GenEscapeFieldString( tabular );
 			break;
 		case HDLC_ABORT_SEQ:
-			GenAbortFieldString(tabular);
+			GenAbortFieldString( tabular );
 			break;
 
 	}
 }
 
-void HdlcAnalyzerResults::GenFlagFieldString(const Frame & frame, bool tabular) 
+void HdlcAnalyzerResults::GenFlagFieldString( const Frame & frame, bool tabular ) 
 {
 	char* flagTypeStr=0;
 	switch( frame.mData1 )
@@ -71,19 +67,19 @@ void HdlcAnalyzerResults::GenFlagFieldString(const Frame & frame, bool tabular)
 	
 	if( !tabular ) 
 	{
-		AddResultString("F");
-		AddResultString("FL");
-		AddResultString("FLAG");
-		AddResultString(flagTypeStr, " FLAG");
+		AddResultString( "F" );
+		AddResultString( "FL" );
+		AddResultString( "FLAG" );
+		AddResultString( flagTypeStr, " FLAG" );
 	}
-	AddResultString(flagTypeStr, " Flag Delimiter");
+	AddResultString( flagTypeStr, " Flag Delimiter" );
 }
 
-void HdlcAnalyzerResults::GenAddressFieldString(const Frame & frame, DisplayBase display_base, bool tabular) 
+void HdlcAnalyzerResults::GenAddressFieldString( const Frame & frame, DisplayBase display_base, bool tabular ) 
 {
-	char addressStr[64];
+	char addressStr[ 64 ];
 	AnalyzerHelpers::GetNumberString( frame.mData1, display_base, 8, addressStr, 64 );
-	char byteNumber[64];
+	char byteNumber[ 64 ];
 	AnalyzerHelpers::GetNumberString( frame.mData2, Decimal, 8, byteNumber, 64 );
 	
 	if( !tabular ) 
@@ -96,13 +92,13 @@ void HdlcAnalyzerResults::GenAddressFieldString(const Frame & frame, DisplayBase
 	AddResultString( "Address ", byteNumber , "[", addressStr, "]" );
 }
 
-void HdlcAnalyzerResults::GenInformationFieldString(const Frame & frame, const DisplayBase display_base,
+void HdlcAnalyzerResults::GenInformationFieldString( const Frame & frame, const DisplayBase display_base,
 													bool tabular ) 
 {
 	
-	char informationStr[64];
+	char informationStr[ 64 ];
 	AnalyzerHelpers::GetNumberString( frame.mData1, display_base, 8, informationStr, 64 );
-	char numberStr[64];
+	char numberStr[ 64 ];
 	AnalyzerHelpers::GetNumberString( frame.mData2, Decimal, 32, numberStr, 64 );
 	
 	if( !tabular ) 
@@ -114,21 +110,29 @@ void HdlcAnalyzerResults::GenInformationFieldString(const Frame & frame, const D
 	AddResultString( "Info ", numberStr, " [", informationStr ,"]" );
 }
 
-// TODO: Show type of frame I, U or S  and extended or basic
 void HdlcAnalyzerResults::GenControlFieldString( const Frame & frame, DisplayBase display_base, bool tabular )
 {
-	char number_str[128];
+	char number_str[ 128 ];
 	AnalyzerHelpers::GetNumberString( frame.mData1, display_base, 16, number_str, 128 );
+	
+	char* frameTypeStr=0;
+	switch( frame.mData2 )
+	{
+		case HDLC_I_FRAME: frameTypeStr = "I"; break;
+		case HDLC_S_FRAME: frameTypeStr = "S"; break;
+		case HDLC_U_FRAME: frameTypeStr = "U"; break;
+	}
 	
 	if( !tabular ) 
 	{
+		AddResultString( "C" );
 		AddResultString( "CTL" );
 		AddResultString( "CTL [", number_str, "]" );
+		AddResultString( "CTL [", number_str, "] - ", frameTypeStr, "-frame" );
 	}
-	AddResultString( "Control [", number_str, "]" );
+	AddResultString( "Control [", number_str, "] - ", frameTypeStr, "-frame" );
 }
 
-// TODO: show algorithm CRC8,16,32 and show success or wrong crc
 void HdlcAnalyzerResults::GenFcsFieldString( const Frame & frame, DisplayBase display_base, bool tabular )
 {
 	U32 fcsBits=0;
@@ -140,14 +144,14 @@ void HdlcAnalyzerResults::GenFcsFieldString( const Frame & frame, DisplayBase di
 		case HDLC_CRC32: fcsBits = 32; crcTypeStr= "32"; break;
 	}
 	
-	char readFcsStr[128];
+	char readFcsStr[ 128 ];
 	AnalyzerHelpers::GetNumberString( frame.mData1, display_base, fcsBits, readFcsStr, 128 );
 	/*
 	char calculatedFcsStr[128];
 	AnalyzerHelpers::GetNumberString( frame.mData1, display_base, 16, number_str, 128 );
 	*/
 		
-	if ( frame.mFlags & DISPLAY_AS_ERROR_FLAG ) 
+	if( frame.mFlags & DISPLAY_AS_ERROR_FLAG ) 
 	{
 		if( !tabular ) 
 		{
