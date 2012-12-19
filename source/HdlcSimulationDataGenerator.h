@@ -61,6 +61,12 @@ protected:
 	bool mFirstFlag;
 	bool mLastFlag;
 	U32 mWrongFramesSeparation;
+	
+	U8 mControlValue;
+	U8 mAddresByteValue;
+	U8 mInformationByteValue;
+	
+	HdlcFrameType mFrameTypes[ 3 ];
 		
 	SimulationChannelDescriptor mHdlcSimulationData;
 	

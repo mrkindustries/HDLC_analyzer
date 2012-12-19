@@ -22,6 +22,9 @@ void HdlcSimulationDataGenerator::Initialize( U32 simulation_sample_rate, HdlcAn
 	mHdlcSimulationData.SetSampleRate( simulation_sample_rate );
 	mHdlcSimulationData.SetInitialBitState( BIT_LOW );
 	
+	// Initialize rng seed 
+	srand( time( NULL ) );
+	
 	double halfPeriod = (1.0 / double( mSettings->mBitRate * 2 ) ) * 1000000.0; 	// half period in useconds.
 	mSamplesInHalfPeriod = USecsToSamples( halfPeriod );		 				// number of samples in a half period.
 	
@@ -32,6 +35,14 @@ void HdlcSimulationDataGenerator::Initialize( U32 simulation_sample_rate, HdlcAn
 	mFirstFlag = true;
 	mLastFlag = false;
 	mWrongFramesSeparation = ( rand() % 10 ) + 10; // [15..30]
+	
+	mControlValue=0;
+	mAddresByteValue=0;
+	mInformationByteValue=0;
+
+	mFrameTypes[ 0 ] = HDLC_I_FRAME; 
+	mFrameTypes[ 1 ] = HDLC_S_FRAME; 
+	mFrameTypes[ 2 ] = HDLC_U_FRAME;
 }
 
 U64 HdlcSimulationDataGenerator::USecsToSamples( U64 us ) const
@@ -64,13 +75,6 @@ bool HdlcSimulationDataGenerator::ContainsElement( U32 index ) const
 U32 HdlcSimulationDataGenerator::GenerateSimulationData( U64 largest_sample_requested, U32 sample_rate, SimulationChannelDescriptor** simulation_channel )
 {
 	U64 adjusted_largest_sample_requested = AnalyzerHelpers::AdjustSimulationTargetSample( largest_sample_requested, sample_rate, mSimulationSampleRateHz );
-
-	srand( time( NULL ) );
-	
-	U16 size=0;
-	U8 informationValue=0;
-	U8 controlValue=0;
-	HdlcFrameType frameTypes[ 3 ] = { HDLC_I_FRAME, HDLC_S_FRAME, HDLC_U_FRAME };
 	
 	while( mHdlcSimulationData.GetCurrentSampleNumber() < adjusted_largest_sample_requested )
 	{
@@ -79,13 +83,15 @@ U32 HdlcSimulationDataGenerator::GenerateSimulationData( U64 largest_sample_requ
 		CreateFlag();
 		CreateFlag();
 		
-		HdlcFrameType frameType = frameTypes[ mFrameNumber%3 ];
-		U32 sizeOfInformation = ( frameType == HDLC_S_FRAME ) ? 0 : 1; 
+		HdlcFrameType frameType = mFrameTypes[ mFrameNumber%3 ];
+		U32 sizeOfInformation = ( frameType == HDLC_S_FRAME ) ? 0 : ( ( rand() % 4 ) + 1 ); 
 		U64 addressBytes= rand() % 4;
 		
-		vector<U8> address = GenAddressField( mSettings->mHdlcAddr, addressBytes, 0x00);
-		vector<U8> control = GenControlField( frameType, mSettings->mHdlcControl, 0x00/*controlValue++*/);
-		vector<U8> information = GenInformationField( sizeOfInformation, 0x00/*informationValue++*/);
+		vector<U8> address = GenAddressField( mSettings->mHdlcAddr, addressBytes, mAddresByteValue++);
+		vector<U8> control = GenControlField( frameType, mSettings->mHdlcControl, mControlValue++);
+		vector<U8> information = GenInformationField( sizeOfInformation, mInformationByteValue++);
+		
+		cerr << "INFORMATION: " << information.size() << "Frame type: " << frameType << endl;
 		
 		CreateHDLCFrame( address, control, information );
 		
@@ -133,7 +139,7 @@ vector<U8> HdlcSimulationDataGenerator::GenAddressField( HdlcAddressType address
 	return addrRet;
 }
 	
-// TODO read ISO/IEC 13239:2002(E) page 26
+// ISO/IEC 13239:2002(E) page 26
 vector<U8> HdlcSimulationDataGenerator::GenControlField( HdlcFrameType frameType, 
 														 HdlcControlType controlType, 
 														 U8 value ) const
@@ -147,7 +153,7 @@ vector<U8> HdlcSimulationDataGenerator::GenControlField( HdlcFrameType frameType
 		case HDLC_S_FRAME:
 		{
 			// first byte
-			ctrl = ( value & 0xFD ) | U8( frameType );
+			ctrl = ( value & 0xFC ) | U8( frameType );
 			controlRet.push_back( ctrl );
 			switch( controlType ) 
 			{
