@@ -4,7 +4,7 @@
 #include <AnalyzerHelpers.h>
 #include <iostream>
 
-// TODO: Adjust AbortComing() and FrameComing()
+// TODO: Adjust AbortComing() and FrameComing() with REAL DATA
 
 using namespace std;
 
@@ -381,7 +381,6 @@ HdlcFrameType HdlcAnalyzer::GetFrameType( U8 value ) const
 	}
 }
 
-// NOTE: Little-endian (first byte is the LSB byte)
 void HdlcAnalyzer::ProcessControlField()
 {
 	if( mAbortFrame )
@@ -532,7 +531,6 @@ void HdlcAnalyzer::InfoAndFcsField(const vector<HdlcByte> & informationAndFcs)
 	vector<HdlcByte> information = informationAndFcs;
 	vector<HdlcByte> fcs;
 	
-	cerr << "HIIIII: " << mCurrentFrameBytes.size() << "  --  " << information.size() << endl; 
 	if( !mAbortFrame ) 
 	{
 		// split information and fcs vector
@@ -540,32 +538,42 @@ void HdlcAnalyzer::InfoAndFcsField(const vector<HdlcByte> & informationAndFcs)
 		{
 			case HDLC_CRC8:
 			{
-				fcs.push_back(information.back());
-				information.pop_back();
+				if( !information.empty() )
+				{
+					fcs.push_back(information.back());
+					information.pop_back();
+				}
 				break;
 			}
 			case HDLC_CRC16:
 			{
-				fcs.insert(fcs.end(), information.end()-2, information.end());
-				information.erase(information.end()-2, information.end());
+				if( information.size() >= 2 )
+				{
+					fcs.insert(fcs.end(), information.end()-2, information.end());
+					information.erase(information.end()-2, information.end());
+				}
 				break;
 			}
 			case HDLC_CRC32:
 			{
-				fcs.insert(fcs.end(), information.end()-4, information.end());
-				information.erase(information.end()-4, information.end());
+				if( information.size() >= 4 )
+				{
+					fcs.insert(fcs.end(), information.end()-4, information.end());
+					information.erase(information.end()-4, information.end());
+				}
 				break;
 			}
 		}
 	}
 	
-	cerr << "BYEEEEEE: " << information.size() << endl; 
-	
 	ProcessInformationField( information );
 		
 	if( !mAbortFrame ) 
 	{
-		ProcessFcsField(fcs);
+		if (!fcs.empty())
+		{
+			ProcessFcsField(fcs);
+		}
 	}
 	
 }
@@ -599,7 +607,6 @@ void HdlcAnalyzer::ProcessFcsField(const vector<HdlcByte> & fcs)
 	vector<U8> calculatedFcs;
 	vector<U8> readFcs = HdlcBytesToVectorBytes(fcs);
 	
-	cerr << "Analyzer" << mCurrentFrameBytes.size() << endl;
 	switch( mSettings->mHdlcFcs )
 	{
 		case HDLC_CRC8:

@@ -31,6 +31,7 @@ void HdlcSimulationDataGenerator::Initialize( U32 simulation_sample_rate, HdlcAn
 	mFrameNumber = 0;	
 	mFirstFlag = true;
 	mLastFlag = false;
+	mWrongFramesSeparation = ( rand() % 15 ) + 15; // [15..30]
 }
 
 U64 HdlcSimulationDataGenerator::USecsToSamples( U64 us ) const
@@ -186,14 +187,16 @@ vector<U8> HdlcSimulationDataGenerator::GenInformationField( U16 size, U8 value 
 
 void HdlcSimulationDataGenerator::ModifySomeBits( vector<U8> & allFields ) const
 {
-	/*
-	//// TODO
-	if (!allFields.empty())
+	// Wrong data after 14 frames
+	if( ( mFrameNumber + 1 ) % mWrongFramesSeparation == 0 )
 	{
-		U32 index = rand() % allFields.size();
-		allFields[ index ] = allFields[ index ] + 0x02;
+		if (!allFields.empty())
+		{
+			// Choose a byte to modify
+			U32 index = rand() % allFields.size();
+			allFields[ index ] = allFields[ index ] + ( rand() % 256 );
+		}
 	}
-	*/
 }
 
 void HdlcSimulationDataGenerator::CreateHDLCFrame( const vector<U8> & address, const vector<U8> & control, 
@@ -467,11 +470,13 @@ vector<U8> HdlcSimulationDataGenerator::CrcDivision( const vector<U8> & stream, 
 	vector<BitState> dataBits = BytesVectorToBitsVector( stream, stream.size() * 8 );
 	vector<BitState> polyBits = BytesVectorToBitsVector( genPoly, crcNumber+1 );
 
+	/*
 	cerr << "Data Bits:" << endl;
 	for( U32 i=0; i < stream.size(); ++i ){ cerr << int(stream.at(i)) << " "; }
 	cerr << endl;
 	for( U32 i=0; i < dataBits.size(); ++i ){ cerr << dataBits.at(i); }
 	cerr << endl;
+	*/
 		
 	U32 dataIndex=0;
 	while( dataIndex < dataBits.size() - (polyBits.size() - 1) )
@@ -491,7 +496,6 @@ vector<U8> HdlcSimulationDataGenerator::CrcDivision( const vector<U8> & stream, 
 		
 		if( dataIndex < dataBits.size() - (polyBits.size() - 1) )
 		{
-			cerr << "Entered" << endl;
 			for( U32 bitIndex = 0; bitIndex < polyBits.size(); ++bitIndex )
 			{
 				BitState bit = dataBits.at( dataIndex + bitIndex );
@@ -505,19 +509,21 @@ vector<U8> HdlcSimulationDataGenerator::CrcDivision( const vector<U8> & stream, 
 		
 	}
 	
+	/*
 	cerr << "Divided:" << endl;
 	for(U32 i=0; i < dataBits.size(); ++i){ cerr << dataBits.at(i); }
 	cerr << endl;
+	*/
 	
 	// put the crc result in the vector of bytes
 	vector<U8> crcRet;
 	U8 offset = crcNumber;
-	for( U32 s=0; s < 2; ++s ) 
+	for( U32 s=0; s < crcNumber / 8; ++s ) 
 	{
 		U64 byteValue= 0;
 		DataBuilder dbyte;
 		dbyte.Reset( &byteValue, AnalyzerEnums::MsbFirst, 8 );
-		for( U32 i=dataBits.size() - offset; i < dataBits.size() - offset+ 8; ++i )
+		for( U32 i=dataBits.size() - offset; i < dataBits.size() - offset + 8; ++i )
 		{
 			dbyte.AddBit( dataBits.at(i) );
 		}

@@ -5,8 +5,6 @@
 #include <iostream>
 #include <fstream>
 
-// NOTE: If the Bubble has >30 characters, there is a bug and the bubbles dissapears/appears
-
 HdlcAnalyzerResults::HdlcAnalyzerResults( HdlcAnalyzer* analyzer, HdlcAnalyzerSettings* settings )
 :	AnalyzerResults(),
 	mSettings( settings ),
@@ -135,7 +133,6 @@ void HdlcAnalyzerResults::GenControlFieldString( const Frame & frame, DisplayBas
 	AddResultString( "Control [", number_str, "] - ", frameTypeStr, "-frame" );
 }
 
-// TODO: show algorithm CRC8,16,32 and show success or wrong crc
 void HdlcAnalyzerResults::GenFcsFieldString( const Frame & frame, DisplayBase display_base, bool tabular )
 {
 	U32 fcsBits=0;

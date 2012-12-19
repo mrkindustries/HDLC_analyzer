@@ -60,6 +60,7 @@ protected:
 	U32 mAbortByte;
 	bool mFirstFlag;
 	bool mLastFlag;
+	U32 mWrongFramesSeparation;
 		
 	SimulationChannelDescriptor mHdlcSimulationData;
 	
