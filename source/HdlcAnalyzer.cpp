@@ -485,7 +485,7 @@ void HdlcAnalyzer::ProcessControlField()
 			mCurrentFrameBytes.push_back(byte0.value); // append control byte
 		}
 	
-		Frame frame = CreateFrame(HDLC_FIELD_EXTENDED_CONTROL, startSample, endSample, data1, frameType);
+		Frame frame = CreateFrame( HDLC_FIELD_EXTENDED_CONTROL, startSample, endSample, data1, frameType );
 		mResults->AddFrame( frame );
 	
 	}
@@ -532,6 +532,7 @@ void HdlcAnalyzer::InfoAndFcsField(const vector<HdlcByte> & informationAndFcs)
 	vector<HdlcByte> information = informationAndFcs;
 	vector<HdlcByte> fcs;
 	
+	cerr << "HIIIII: " << mCurrentFrameBytes.size() << "  --  " << information.size() << endl; 
 	if( !mAbortFrame ) 
 	{
 		// split information and fcs vector
@@ -558,14 +559,12 @@ void HdlcAnalyzer::InfoAndFcsField(const vector<HdlcByte> & informationAndFcs)
 		}
 	}
 	
+	cerr << "BYEEEEEE: " << information.size() << endl; 
+	
 	ProcessInformationField( information );
 		
 	if( !mAbortFrame ) 
 	{
-		// Add information bytes to the frame bytes
-		vector<U8> informationBytes = HdlcBytesToVectorBytes(information);
-		mCurrentFrameBytes.insert(mCurrentFrameBytes.end(), informationBytes.begin(), informationBytes.end());
-		
 		ProcessFcsField(fcs);
 	}
 	
@@ -583,35 +582,48 @@ void HdlcAnalyzer::ProcessInformationField(const vector<HdlcByte> & information)
 	}
 }
 
+bool HdlcAnalyzer::CrcOk( const vector<U8> & remainder ) const
+{
+	for(U32 i=0; i < remainder.size(); ++i)
+	{
+		if (remainder.at(i) != 0x00)
+		{
+			return false;
+		}
+	}
+	return true;
+}
+
 void HdlcAnalyzer::ProcessFcsField(const vector<HdlcByte> & fcs)
 {
 	vector<U8> calculatedFcs;
+	vector<U8> readFcs = HdlcBytesToVectorBytes(fcs);
 	
+	cerr << "Analyzer" << mCurrentFrameBytes.size() << endl;
 	switch( mSettings->mHdlcFcs )
 	{
 		case HDLC_CRC8:
 		{
-			calculatedFcs = HdlcSimulationDataGenerator::Crc8( mCurrentFrameBytes );
+			calculatedFcs = HdlcSimulationDataGenerator::Crc8( mCurrentFrameBytes, readFcs );
 			break;
 		}
 		case HDLC_CRC16:
 		{
-			calculatedFcs = HdlcSimulationDataGenerator::Crc16( mCurrentFrameBytes );
+			calculatedFcs = HdlcSimulationDataGenerator::Crc16( mCurrentFrameBytes, readFcs );
 			break;
 		}
 		case HDLC_CRC32:
 		{
-			calculatedFcs = HdlcSimulationDataGenerator::Crc32( mCurrentFrameBytes );
+			calculatedFcs = HdlcSimulationDataGenerator::Crc32( mCurrentFrameBytes, readFcs );
 			break;
 		}
 	}
 
-	vector<U8> readFcs = HdlcBytesToVectorBytes(fcs);
-	
 	Frame frame = CreateFrame(HDLC_FIELD_FCS, fcs.front().startSample, fcs.back().endSample, 
 							  VectorToValue(readFcs), VectorToValue(calculatedFcs) );
 	
-	if ( calculatedFcs != readFcs ) // CRC ok
+	// Check if crc is ok (i.e. is equal to 0)
+	if ( !CrcOk( calculatedFcs ) ) // CRC ok
 	{
 		frame.mFlags = DISPLAY_AS_ERROR_FLAG;
 	}

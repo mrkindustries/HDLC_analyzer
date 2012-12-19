@@ -57,6 +57,7 @@ protected:
 	HdlcByte ByteAsyncReadByte_();
 	
 	// Helper functions
+	bool CrcOk( const vector<U8> & remainder ) const;
 	HdlcFrameType GetFrameType( U8 value ) const;
 	Frame CreateFrame( U8 mType, U64 mStartingSampleInclusive, U64 mEndingSampleInclusive, 
 					   U64 mData1=0, U64 mData2=0, U8 mFlags=0 ) const;

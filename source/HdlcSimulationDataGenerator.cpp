@@ -3,6 +3,7 @@
 #include <AnalyzerHelpers.h>
 #include <cstdlib>
 #include <iostream>
+#include <iomanip>
 
 HdlcSimulationDataGenerator::HdlcSimulationDataGenerator()
 {
@@ -79,7 +80,7 @@ U32 HdlcSimulationDataGenerator::GenerateSimulationData( U64 largest_sample_requ
 		CreateFlag();
 		
 		HdlcFrameType frameType = frameTypes[mFrameNumber%3];
-		U32 sizeOfInformation = (frameType == HDLC_S_FRAME) ? 0 : 2; 
+		U32 sizeOfInformation = (frameType == HDLC_S_FRAME) ? 0 : 1; 
 		
 		vector<U8> address = GenAddressField(mSettings->mHdlcAddr, addressBytes, 0x00);
 		vector<U8> control = GenControlField(frameType, mSettings->mHdlcControl, 0x00/*controlValue++*/);
@@ -183,6 +184,18 @@ vector<U8> HdlcSimulationDataGenerator::GenInformationField( U16 size, U8 value 
 	return informationRet;
 }
 
+void HdlcSimulationDataGenerator::ModifySomeBits( vector<U8> & allFields ) const
+{
+	/*
+	//// TODO
+	if (!allFields.empty())
+	{
+		U32 index = rand() % allFields.size();
+		allFields[ index ] = allFields[ index ] + 0x02;
+	}
+	*/
+}
+
 void HdlcSimulationDataGenerator::CreateHDLCFrame( const vector<U8> & address, const vector<U8> & control, 
 												   const vector<U8> & information )
 {
@@ -195,6 +208,8 @@ void HdlcSimulationDataGenerator::CreateHDLCFrame( const vector<U8> & address, c
 	// Calculate the crc of the address, control and data fields
 	vector<U8> fcs = GenFcs(mSettings->mHdlcFcs, allFields);
 	allFields.insert(allFields.end(), fcs.begin(), fcs.end());
+	
+	ModifySomeBits( allFields );
 	
 	// Transmit the frame in bit-sync or byte-async
 	if( mSettings->mTransmissionMode == HDLC_TRANSMISSION_BIT_SYNC )
@@ -210,16 +225,16 @@ void HdlcSimulationDataGenerator::CreateHDLCFrame( const vector<U8> & address, c
 vector<U8> HdlcSimulationDataGenerator::GenFcs( HdlcFcsType fcsType, const vector<U8> & stream ) const
 {
 	vector<U8> crcRet;
-	switch(fcsType) 
+	switch( fcsType ) 
 	{
 		case HDLC_CRC8: 
-			crcRet = Crc8(stream);
+			crcRet = Crc8( stream );
 			break;
 		case HDLC_CRC16:
-			crcRet = Crc16(stream);
+			crcRet = Crc16( stream );
 			break;
 		case HDLC_CRC32:
-			crcRet = Crc32(stream);
+			crcRet = Crc32( stream );
 			break;
 	}
 	return crcRet;
@@ -430,7 +445,6 @@ vector<BitState> HdlcSimulationDataGenerator::BytesVectorToBitsVector( const vec
 		if( getByte )
 		{
 			byte = v.at(vectorIndex);
-			getByte = false;
 			bytePos = 0x80;
 			vectorIndex++;
 		}
@@ -447,10 +461,20 @@ vector<BitState> HdlcSimulationDataGenerator::BytesVectorToBitsVector( const vec
 	return bitsRet;
 }
 
-void HdlcSimulationDataGenerator::CrcDivision(vector<BitState> & dataBits, const vector<BitState> & polyBits)
+vector<U8> HdlcSimulationDataGenerator::CrcDivision( const vector<U8> & stream, const vector<U8> & genPoly, U32 crcNumber )
 {
+	
+	vector<BitState> dataBits = BytesVectorToBitsVector( stream, stream.size() * 8 );
+	vector<BitState> polyBits = BytesVectorToBitsVector( genPoly, crcNumber+1 );
+
+	cerr << "Data Bits:" << endl;
+	for( U32 i=0; i < stream.size(); ++i ){ cerr << int(stream.at(i)) << " "; }
+	cerr << endl;
+	for( U32 i=0; i < dataBits.size(); ++i ){ cerr << dataBits.at(i); }
+	cerr << endl;
+		
 	U32 dataIndex=0;
-	while( dataIndex < dataBits.size() - polyBits.size() - 1 )
+	while( dataIndex < dataBits.size() - (polyBits.size() - 1) )
 	{
 		
 		// Advance one-position or 0-bits
@@ -458,92 +482,37 @@ void HdlcSimulationDataGenerator::CrcDivision(vector<BitState> & dataBits, const
 		while( zeroBits )
 		{
 			zeroBits = ( ( dataBits.at( dataIndex ) == BIT_LOW ) && 
-					     ( dataIndex < dataBits.size() - polyBits.size() - 1 ) );
+					     ( dataIndex < dataBits.size() - (polyBits.size() - 1) ) );
 			if( zeroBits ) 
 			{
 				dataIndex++;
 			}
 		}
 		
-		for( U32 bitIndex = 0; bitIndex < polyBits.size(); ++bitIndex )
+		if( dataIndex < dataBits.size() - (polyBits.size() - 1) )
 		{
-			BitState bit = dataBits.at( dataIndex + bitIndex );
-			BitState polyBit = polyBits.at( bitIndex );
-			
-			dataBits[ dataIndex + bitIndex ] = BitState( bit ^ polyBit );
+			cerr << "Entered" << endl;
+			for( U32 bitIndex = 0; bitIndex < polyBits.size(); ++bitIndex )
+			{
+				BitState bit = dataBits.at( dataIndex + bitIndex );
+				BitState polyBit = polyBits.at( bitIndex );
+				
+				dataBits[ dataIndex + bitIndex ] = BitState( bit ^ polyBit );
+			}
 		}
 		
 		dataIndex++;
 		
 	}
-}
-
-vector<U8> HdlcSimulationDataGenerator::Crc8( const vector<U8> & stream )
-{
-	vector<U8> crc8Ret(1, 0);
 	
-	vector<U8> result = stream;
-	// Append eight 0 bits at the end (pad)
-	result.push_back(0x00);
-	
-	// ISO/IEC 13239:2002(E) page 14
-	// CRC8 Divisor (9 bits) - x**8 + x**2 + x + 1
-	vector<U8> divisor;
-	divisor.push_back(0x83);
-	divisor.push_back(0x80);
-	
-	vector<BitState> dataBits = BytesVectorToBitsVector( result, stream.size() * 8 );
-	vector<BitState> polyBits = BytesVectorToBitsVector( divisor, 9 );
-	
-	CrcDivision(dataBits, polyBits);
-	
-	// put the crc result in the vector of bytes
-	U8 dataByte=0;
-	for( U32 i=dataBits.size()-8; i < dataBits.size(); ++i )
-	{
-		dataByte << ( ( dataBits.at(i) == BIT_HIGH ) ? 1 : 0 );
-	}
-	
-	crc8Ret.push_back(dataByte);
-	
-	return crc8Ret;
-}
-
-vector<U8> HdlcSimulationDataGenerator::Crc16( const vector<U8> & stream )
-{
-	
-	vector<U8> crc16Ret;
-	
-	vector<U8> result = stream;
-	// Append eight 0 bits at the end (pad)
-	result.push_back(0x00);
-	result.push_back(0x00);
-	
-	// ISO/IEC 13239:2002(E) page 14
-	// CRC16 Divisor (17 bits) - x**16 + x**12 + x**5 + 1 (0x1021)
-	vector<U8> divisor;
-	divisor.push_back(0x88);
-	divisor.push_back(0x10);
-	divisor.push_back(0x80);
-	
-	vector<BitState> dataBits = BytesVectorToBitsVector( result, result.size() * 8 );
-	vector<BitState> polyBits = BytesVectorToBitsVector( divisor, 17 );
-
-	cerr << "BEFORE" << endl;
-	for( U32 i=0; i < dataBits.size(); ++i){ cerr << dataBits.at(i); }
-	cerr << endl;
-	for( U32 i=0; i < result.size(); ++i){ cerr << int(result.at(i)) << " "; }
-	cerr << endl;
-		
-	CrcDivision( dataBits, polyBits );
-	
-	cerr << "AFTER" << endl;
+	cerr << "Divided:" << endl;
 	for(U32 i=0; i < dataBits.size(); ++i){ cerr << dataBits.at(i); }
 	cerr << endl;
 	
 	// put the crc result in the vector of bytes
-	U8 offset = 16;
-	for( U32 s=0; s < 2; ++s) 
+	vector<U8> crcRet;
+	U8 offset = crcNumber;
+	for( U32 s=0; s < 2; ++s ) 
 	{
 		U64 byteValue= 0;
 		DataBuilder dbyte;
@@ -553,18 +522,86 @@ vector<U8> HdlcSimulationDataGenerator::Crc16( const vector<U8> & stream )
 			dbyte.AddBit( dataBits.at(i) );
 		}
 		offset -= 8;
-		crc16Ret.push_back( byteValue );
+		crcRet.push_back( byteValue );
 	}
 	
-	cerr << int(crc16Ret.at(0)) << "~~" << int(crc16Ret.at(1)) << endl;
+	return crcRet;
 	
+}
+
+vector<U8> HdlcSimulationDataGenerator::Crc8( const vector<U8> & stream, const vector<U8> & append )
+{
+	vector<U8> result = stream;
+	if( append.empty() )
+	{
+		result.push_back(0x00);
+	}
+	else
+	{
+		result.insert(result.end(), append.begin(), append.end());
+	}
+
+	// ISO/IEC 13239:2002(E) page 14
+	// CRC8 Divisor (9 bits) - x**8 + x**2 + x + 1
+	vector<U8> divisor;
+	divisor.push_back(0x83);
+	divisor.push_back(0x80);
+	
+	vector<U8> crc8Ret = CrcDivision( result, divisor, 8 );
+	return crc8Ret;
+}
+
+vector<U8> HdlcSimulationDataGenerator::Crc16( const vector<U8> & stream, const vector<U8> & append )
+{
+	vector<U8> result = stream;
+	if (append.empty())
+	{
+		// Append 16 0-bits
+		result.push_back(0x00);
+		result.push_back(0x00);
+	}
+	else
+	{
+		result.insert(result.end(), append.begin(), append.end());
+	}
+	
+	// ISO/IEC 13239:2002(E) page 14
+	// CRC16 Divisor (17 bits) - x**16 + x**12 + x**5 + 1 (0x1021)
+	vector<U8> divisor;
+	divisor.push_back(0x88);
+	divisor.push_back(0x10);
+	divisor.push_back(0x80);
+	
+	vector<U8> crc16Ret = CrcDivision( result, divisor, 16 );
 	return crc16Ret;
 }
 
-vector<U8> HdlcSimulationDataGenerator::Crc32( const vector<U8> & stream )
+vector<U8> HdlcSimulationDataGenerator::Crc32( const vector<U8> & stream, const vector<U8> & append )
 {
-	vector<U8> crc32Ret(4, 0);
-	// TODO
+	vector<U8> result = stream;
+	if( append.empty() )
+	{
+		// Append 32 0-bits 
+		result.push_back(0x00);
+		result.push_back(0x00);
+		result.push_back(0x00);
+		result.push_back(0x00);
+	}
+	else
+	{
+		result.insert(result.end(), append.begin(), append.end());
+	}
+
+	// ISO/IEC 13239:2002(E) page 13
+	// CRC32 Divisor (33 bits)
+	vector<U8> divisor;
+	divisor.push_back(0x82);
+	divisor.push_back(0x60);
+	divisor.push_back(0x8E);
+	divisor.push_back(0xDB);
+	divisor.push_back(0x80);
+	
+	vector<U8> crc32Ret = CrcDivision( result, divisor, 32 );
 	return crc32Ret;
 
 }

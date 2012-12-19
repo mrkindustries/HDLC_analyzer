@@ -17,10 +17,10 @@ public:
 	void Initialize( U32 simulation_sample_rate, HdlcAnalyzerSettings* settings );
 	U32 GenerateSimulationData( U64 newest_sample_requested, U32 sample_rate, SimulationChannelDescriptor** simulation_channel );
 	
-	static vector<U8> Crc8( const vector<U8> & stream );
-	static vector<U8> Crc16( const vector<U8> & stream );
-	static vector<U8> Crc32( const vector<U8> & stream );
-	static void CrcDivision(vector<BitState> & dataBits, const vector<BitState> & polyBits);
+	static vector<U8> Crc8( const vector<U8> & stream, const vector<U8> & append = vector<U8>() );
+	static vector<U8> Crc16( const vector<U8> & stream, const vector<U8> & append = vector<U8>() );
+	static vector<U8> Crc32( const vector<U8> & stream, const vector<U8> & append = vector<U8>() );
+	static vector<U8> CrcDivision( const vector<U8> & stream, const vector<U8> & genPoly, U32 crcNumber );
 	static vector<BitState> BytesVectorToBitsVector( const vector<U8> & v, U32 numberOfBits );
 	static U8 Bit5Inv( U8 value );
 
@@ -40,6 +40,7 @@ protected:
 	void AsyncByteFill( U32 N );
 	
 	// Helper functions
+	void ModifySomeBits( vector<U8> & allFields ) const;
 	bool AbortFrameAndGenIndex( U32 N );
 	U64 USecsToSamples( U64 us ) const;
 	vector<U8> GenFcs( HdlcFcsType fcsType, const vector<U8> & stream ) const;
