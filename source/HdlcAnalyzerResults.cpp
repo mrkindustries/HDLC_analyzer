@@ -222,50 +222,74 @@ void HdlcAnalyzerResults::GenAbortFieldString( bool tabular )
 void HdlcAnalyzerResults::GenerateExportFile( const char* file, DisplayBase display_base, U32 export_type_user_id )
 {
 	/*
-	std::ofstream file_stream( file, std::ios::out );
+	std::ofstream fileStream( file, std::ios::out );
 
-	U64 trigger_sample = mAnalyzer->GetTriggerSample();
-	U32 sample_rate = mAnalyzer->GetSampleRate();
+	U64 triggerSample = mAnalyzer->GetTriggerSample();
+	U32 sampleRate = mAnalyzer->GetSampleRate();
 
-	file_stream << "Time [s],Value" << std::endl;
+	fileStream << "Time [s],Address,Control,HCS,Information,FCS" << std::endl;
 
-	U64 num_frames = GetNumFrames();
-	for( U32 i=0; i < num_frames; i++ )
+	U64 numFrames = GetNumFrames();
+	U64 frameNumber = 0;
+	for( ; ; )
 	{
-		Frame frame = GetFrame( i );
+		Frame firstAddressframe = GetFrame( frameNumber++ );
 		
-		char time_str[128];
-		AnalyzerHelpers::GetTimeString( frame.mStartingSampleInclusive, trigger_sample, sample_rate, time_str, 128 );
-
-		char number_str[128];
-		AnalyzerHelpers::GetNumberString( frame.mData1, display_base, 8, number_str, 128 );
-
-		file_stream << time_str << "," << number_str << std::endl;
-
+		// 1)  Time [s]
+		char timeStr[128];
+		AnalyzerHelpers::GetTimeString( firstAddressframe.mStartingSampleInclusive, triggerSample, sampleRate, timeStr, 128 );
+		fileStream << timeStr << ",";
+		
+		// 2) Address Field
+		if ( !(firstAddressframe.mType == HDLC_FIELD_BASIC_ADDRESS || 
+			 firstAddressframe.mType == HDLC_FIELD_EXTENDED_ADDRESS) ) // ERROR
+		{
+			fileStream << "," << endl;
+			continue;
+		}
+		if( mSettings->mHdlcAddr == HDLC_BASIC_ADDRESS_FIELD )
+		{
+			char addressStr[64];
+			AnalyzerHelpers::GetNumberString( firstAddressframe.mData1, display_base, 8, addressStr, 64 );
+			fileStream << addressStr << ",";
+		}
+		else // Check for extended address
+		{
+			Frame nextAddress = firstAddressframe;
+			for( ; ; )
+			{
+				char addressStr[64];
+				AnalyzerHelpers::GetNumberString( nextAddress.mData1, display_base, 8, addressStr, 64 );
+				fileStream << addressStr << ",";
+				
+				bool endOfAddress = ( ( nextAddress.value & 0x01 ) == 0 );
+				if( endOfAddress ) // no more bytes of address?
+				{
+					break;
+				}
+				else
+				{
+					nextAddress = GetFrame( frameNumber++ );
+				}
+				
+			}
+		}
+		
+		// 3) Control Field
+		
+		
 		if( UpdateExportProgressAndCheckForCancel( i, num_frames ) == true )
 		{
-			file_stream.close();
-void HdlcAnalyzerResults::GenFlagFieldString(bool tabular) 
-{
-	if( !tabular ) 
-	{
-		AddResultString("F");
-		AddResultString("FL");
-		AddResultString("FLAG");
-	}
-	AddResultString("Flag Delimiter");
-}
 			return;
 		}
 	}
-
-	file_stream.close();
 	*/
+
 }
 
 void HdlcAnalyzerResults::GenerateFrameTabularText( U64 frame_index, DisplayBase display_base )
 {
-	GenBubbleText(frame_index, display_base, true);
+	GenBubbleText( frame_index, display_base, true );
 }
 
 void HdlcAnalyzerResults::GeneratePacketTabularText( U64 packet_id, DisplayBase display_base )

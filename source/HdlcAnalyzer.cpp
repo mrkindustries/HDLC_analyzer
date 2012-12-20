@@ -4,9 +4,8 @@
 #include <AnalyzerHelpers.h>
 #include <iostream>
 
-// TODO: Adjust AbortComing() and FrameComing() with REAL DATA
-// TODO Suport:
-// 		* HCS field (very similar to FCS field)
+// TODO: Adjust AbortComing() and FlagComing() with REAL DATA
+// TODO Add Suport for:
 // 		* Frame Format Field
 
 using namespace std;
@@ -114,9 +113,6 @@ HdlcByte HdlcAnalyzer::ProcessFlags()
 	return addressByte;
 }
 
-// NOTE: We assume two 0 between flags, i.e.: ...0111111001111110...
-// NOTE: For one-zero btw flags won't use BitSyncReadByte()...
-// NOTE: check for end of line (if no flags at all...)
 // Interframe time fill: ISO/IEC 13239:2002(E) pag. 21
 void HdlcAnalyzer::BitSyncProcessFlags()
 {
@@ -215,8 +211,8 @@ BitState HdlcAnalyzer::BitSyncReadBit()
 bool HdlcAnalyzer::FlagComing()
 {
 	// TODO: check here if tolerance
-	return !mHdlc->WouldAdvancingCauseTransition( mSamplesIn7Bits-1 ) &&
-		   mHdlc->WouldAdvancingCauseTransition( mSamplesIn7Bits );
+	return !mHdlc->WouldAdvancingCauseTransition( mSamplesIn7Bits - mSamplesInHalfPeriod * 0.5 ) &&
+		   mHdlc->WouldAdvancingCauseTransition( mSamplesIn7Bits + mSamplesInHalfPeriod * 0.5 );
 }
 
 bool HdlcAnalyzer::AbortComing()
@@ -792,7 +788,6 @@ vector<U8> HdlcAnalyzer::HdlcBytesToVectorBytes( const vector<HdlcByte> & asyncB
 	return ret;
 }
 
-// TODO: check endianness
 U64 HdlcAnalyzer::VectorToValue( const vector<U8> & v ) const
 {
 	U64 value=0;
