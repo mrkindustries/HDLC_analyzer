@@ -39,6 +39,9 @@ void HdlcAnalyzerResults::GenBubbleText( U64 frame_index, DisplayBase display_ba
 		case HDLC_FIELD_EXTENDED_CONTROL:
 			GenControlFieldString( frame, display_base, tabular );
 			break;
+		case HDLC_FIELD_HCS:
+			GenFcsFieldString( frame, display_base, tabular );
+			break;
 		case HDLC_FIELD_INFORMATION:
 			GenInformationFieldString( frame, display_base, tabular );
 			break;
@@ -150,22 +153,46 @@ void HdlcAnalyzerResults::GenFcsFieldString( const Frame & frame, DisplayBase di
 	char calculatedFcsStr[128];
 	AnalyzerHelpers::GetNumberString( frame.mData1, display_base, 16, number_str, 128 );
 	*/
+	
+	char* fieldNameStr=0;
+	if( frame.mType == HDLC_FIELD_FCS )
+	{
+		if( frame.mFlags & DISPLAY_AS_ERROR_FLAG )
+		{
+			fieldNameStr = "!FCS";
+		}
+		else
+		{
+			fieldNameStr = "FCS";
+		}
+	}
+	else
+	{
+		if( frame.mFlags & DISPLAY_AS_ERROR_FLAG )
+		{
+			fieldNameStr = "!HCS";
+		}
+		else
+		{
+			fieldNameStr = "HCS";
+		}
+	}
 		
 	if( frame.mFlags & DISPLAY_AS_ERROR_FLAG ) 
 	{
 		if( !tabular ) 
 		{
-			AddResultString( "!CRC", crcTypeStr," ERROR"  );
+			AddResultString( fieldNameStr , " CRC", crcTypeStr, " ERROR"  );
 		}
-		AddResultString( "!CRC", crcTypeStr, " ERROR [", readFcsStr, "]" );	
+		AddResultString( fieldNameStr, " CRC", crcTypeStr, " ERROR [", readFcsStr, "]" );	
 	}
 	else 
 	{
 		if( !tabular ) 
 		{
-			AddResultString( "CRC", crcTypeStr, "->ok" );
+			AddResultString( fieldNameStr, " CRC", crcTypeStr, "->ok" );
 		}
-		AddResultString( "CRC", crcTypeStr, "->ok [", readFcsStr, "]" );
+		AddResultString( fieldNameStr, " CRC", crcTypeStr, "->ok [", readFcsStr, "]" );
 	}
 	
 }

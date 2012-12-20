@@ -5,6 +5,9 @@
 #include <iostream>
 
 // TODO: Adjust AbortComing() and FrameComing() with REAL DATA
+// TODO Suport:
+// 		* HCS field (very similar to FCS field)
+// 		* Frame Format Field
 
 using namespace std;
 
@@ -38,6 +41,7 @@ void HdlcAnalyzer::SetupAnalyzer()
 	mConsecutiveOnes = 0;
 	mReadingFrame = false;
 	mAbortFrame = false;
+	mCurrentFrameIsSFrame = false;
 }
 
 void HdlcAnalyzer::WorkerThread()
@@ -88,6 +92,7 @@ void HdlcAnalyzer::ProcessHDLCFrame()
 	
 	mReadingFrame = false;
 	mAbortFrame = false;
+	mCurrentFrameIsSFrame = false;
 	
 }
 
@@ -342,6 +347,8 @@ void HdlcAnalyzer::ProcessAddressField( HdlcByte byteAfterFlag )
 	{
 		int i=0;
 		HdlcByte addressByte = byteAfterFlag;
+		// Put a marker in the beggining of the HDLC frame
+		mResults->AddMarker( addressByte.startSample, AnalyzerResults::Start, mSettings->mInputChannel );
 		for( ; ; ) 
 		{
 			Frame frame = CreateFrame( HDLC_FIELD_EXTENDED_ADDRESS, addressByte.startSample, 
@@ -410,6 +417,8 @@ void HdlcAnalyzer::ProcessControlField()
 		
 		if( frameType != HDLC_U_FRAME )
 		{
+			mCurrentFrameIsSFrame = ( frameType == HDLC_S_FRAME );
+			
 			switch( mSettings->mHdlcControl )
 			{
 				case HDLC_EXTENDED_CONTROL_FIELD_MOD_128: 
@@ -529,6 +538,7 @@ void HdlcAnalyzer::ProcessInfoAndFcsField()
 void HdlcAnalyzer::InfoAndFcsField(const vector<HdlcByte> & informationAndFcs)
 {
 	vector<HdlcByte> information = informationAndFcs;
+	vector<HdlcByte> hcs;
 	vector<HdlcByte> fcs;
 	
 	if( !mAbortFrame ) 
@@ -538,8 +548,14 @@ void HdlcAnalyzer::InfoAndFcsField(const vector<HdlcByte> & informationAndFcs)
 		{
 			case HDLC_CRC8:
 			{
-				if( !information.empty() )
+				if( ( !information.empty() && ( !mSettings->mWithHcsField ) ) || 
+					( information.size() >= 2 && ( mSettings->mWithHcsField ) ) )
 				{
+					if( mSettings->mWithHcsField )
+					{
+						hcs.push_back( information.front() );
+						information.erase( information.begin() );
+					}
 					fcs.push_back( information.back() );
 					information.pop_back();
 				}
@@ -547,8 +563,15 @@ void HdlcAnalyzer::InfoAndFcsField(const vector<HdlcByte> & informationAndFcs)
 			}
 			case HDLC_CRC16:
 			{
-				if( information.size() >= 2 )
+				if( ( information.size() >= 2 && !mSettings->mWithHcsField ) || 
+					( information.size() >= 4 && mSettings->mWithHcsField ) ||
+					( information.size() >= 2 && mSettings->mWithHcsField && mCurrentFrameIsSFrame ) )
 				{
+					if( mSettings->mWithHcsField && !mCurrentFrameIsSFrame )
+					{
+						hcs.insert( hcs.end(), information.begin(), information.begin()+2 );
+						information.erase( information.begin(), information.begin()+2 );
+					}
 					fcs.insert( fcs.end(), information.end()-2, information.end() );
 					information.erase( information.end()-2, information.end() );
 				}
@@ -556,13 +579,27 @@ void HdlcAnalyzer::InfoAndFcsField(const vector<HdlcByte> & informationAndFcs)
 			}
 			case HDLC_CRC32:
 			{
-				if( information.size() >= 4 )
+				if( ( information.size() >= 4 && ( !mSettings->mWithHcsField ) ) || 
+					( information.size() >= 8 && ( mSettings->mWithHcsField ) ) )
 				{
+					if( mSettings->mWithHcsField )
+					{
+						hcs.insert( hcs.end(), information.begin(), information.begin()+4 );
+						information.erase( information.begin(), information.begin()+4 );
+					}
 					fcs.insert( fcs.end(), information.end()-4, information.end() );
 					information.erase( information.end()-4, information.end() );
 				}
 				break;
 			}
+		}
+	}
+
+	if( !mAbortFrame ) 
+	{
+		if( !hcs.empty() )
+		{
+			ProcessFcsField( hcs, HDLC_CRC_HCS );
 		}
 	}
 	
@@ -572,7 +609,7 @@ void HdlcAnalyzer::InfoAndFcsField(const vector<HdlcByte> & informationAndFcs)
 	{
 		if( !fcs.empty() )
 		{
-			ProcessFcsField( fcs );
+			ProcessFcsField( fcs, HDLC_CRC_FCS );
 		}
 	}
 	
@@ -602,7 +639,7 @@ bool HdlcAnalyzer::CrcOk( const vector<U8> & remainder ) const
 	return true;
 }
 
-void HdlcAnalyzer::ProcessFcsField(const vector<HdlcByte> & fcs)
+void HdlcAnalyzer::ProcessFcsField( const vector<HdlcByte> & fcs, HdlcCrcField crcFieldType )
 {
 	vector<U8> calculatedFcs;
 	vector<U8> readFcs = HdlcBytesToVectorBytes( fcs );
@@ -625,8 +662,18 @@ void HdlcAnalyzer::ProcessFcsField(const vector<HdlcByte> & fcs)
 			break;
 		}
 	}
+	
+	// Add the HCS bytes (The FCS checks all the bytes between the flags)
+	if( crcFieldType == HDLC_CRC_HCS )
+	{
+		for( U32 i=0; i < readFcs.size(); ++i )
+		{
+			mCurrentFrameBytes.push_back( readFcs.at( i ) );
+		}
+	}
 
-	Frame frame = CreateFrame( HDLC_FIELD_FCS, fcs.front().startSample, fcs.back().endSample, 
+	HdlcFieldType frameType = ( crcFieldType == HDLC_CRC_HCS ) ? HDLC_FIELD_HCS : HDLC_FIELD_FCS;
+	Frame frame = CreateFrame( frameType, fcs.front().startSample, fcs.back().endSample, 
 							  VectorToValue(readFcs), VectorToValue(calculatedFcs) );
 	
 	// Check if crc is ok (i.e. is equal to 0)
@@ -636,8 +683,12 @@ void HdlcAnalyzer::ProcessFcsField(const vector<HdlcByte> & fcs)
 	}
 	
 	mResults->AddFrame( frame );
-	// Put a marker in the end of the HDLC frame
-	mResults->AddMarker( frame.mEndingSampleInclusive, AnalyzerResults::Stop, mSettings->mInputChannel );
+	
+	if( crcFieldType == HDLC_CRC_FCS )
+	{
+		// Put a marker in the end of the HDLC frame
+		mResults->AddMarker( frame.mEndingSampleInclusive, AnalyzerResults::Stop, mSettings->mInputChannel );
+	}
 	
 }
 
