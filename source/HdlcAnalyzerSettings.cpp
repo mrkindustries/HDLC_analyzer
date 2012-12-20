@@ -10,7 +10,8 @@ HdlcAnalyzerSettings::HdlcAnalyzerSettings()
 	mHdlcAddr( HDLC_BASIC_ADDRESS_FIELD ),
 	mHdlcControl( HDLC_BASIC_CONTROL_FIELD ),
 	mHdlcFcs( HDLC_CRC16 ),
-	mSharedZero( false )
+	mSharedZero( false ),
+	mWithHcsField( false )
 {
 	mInputChannelInterface.reset( new AnalyzerSettingInterfaceChannel() );
 	mInputChannelInterface->SetTitleAndTooltip( "HDLC", "Standard HDLC" );
@@ -25,7 +26,7 @@ HdlcAnalyzerSettings::HdlcAnalyzerSettings()
 	mHdlcTransmissionInterface.reset( new AnalyzerSettingInterfaceNumberList() );
 	mHdlcTransmissionInterface->SetTitleAndTooltip( "Transmission Mode", "Specify the transmission mode of the HDLC frames" );
 	mHdlcTransmissionInterface->AddNumber( HDLC_TRANSMISSION_BIT_SYNC, "Bit Synchronous", "Bit-oriented transmission using bit stuffing" );
-	mHdlcTransmissionInterface->AddNumber( HDLC_TRANSMISSION_BYTE_ASYNC, "Byte Asynchronous", "Byte asynchronous transmission using byte stuffing" );
+	mHdlcTransmissionInterface->AddNumber( HDLC_TRANSMISSION_BYTE_ASYNC, "Byte Asynchronous", "Byte asynchronous transmission using byte stuffing (Also known as start/stop mode)" );
 	mHdlcTransmissionInterface->SetNumber( mTransmissionMode );
 	
 	mHdlcAddrInterface.reset( new AnalyzerSettingInterfaceNumberList() );
@@ -56,6 +57,12 @@ HdlcAnalyzerSettings::HdlcAnalyzerSettings()
 												  "two zeros between the flags are considered." );
 	mHdlcSharedZeroInterface->SetValue( mSharedZero );
 	
+	mHdlcWithHcsInterface.reset( new AnalyzerSettingInterfaceBool() );
+	mHdlcWithHcsInterface->SetTitleAndTooltip( "Header Check Sequence", "If checked, the HDLC frame has an extra fcs "
+											   "field after the control field and before the information field. "
+											   "This check sequence is applied to only the header, i.e. the bits "
+											   "between the opening flag and the Header Check Sequence.");
+	mHdlcWithHcsInterface->SetValue( mWithHcsField );
 	
 	AddInterface( mInputChannelInterface.get() );
 	AddInterface( mBitRateInterface.get() );
@@ -64,6 +71,7 @@ HdlcAnalyzerSettings::HdlcAnalyzerSettings()
 	AddInterface( mHdlcControlInterface.get() );
 	AddInterface( mHdlcFcsInterface.get() );
 	AddInterface( mHdlcSharedZeroInterface.get() );
+	AddInterface( mHdlcWithHcsInterface.get() );
 	
 	AddExportOption( 0, "Export as text/csv file" );
 	AddExportExtension( 0, "text", "txt" );
@@ -86,6 +94,7 @@ bool HdlcAnalyzerSettings::SetSettingsFromInterfaces()
 	mHdlcControl = HdlcControlType( U32( mHdlcControlInterface->GetNumber() ) );
 	mHdlcFcs = HdlcFcsType( U32( mHdlcFcsInterface->GetNumber() ) );
 	mSharedZero = mHdlcSharedZeroInterface->GetValue();
+	mWithHcsField = mHdlcWithHcsInterface->GetValue();
 	
 	ClearChannels();
 	AddChannel( mInputChannel, "HDLC", true );
@@ -102,6 +111,7 @@ void HdlcAnalyzerSettings::UpdateInterfacesFromSettings()
 	mHdlcControlInterface->SetNumber( mHdlcControl );
 	mHdlcFcsInterface->SetNumber( mHdlcFcs );
 	mHdlcSharedZeroInterface->SetValue( mSharedZero );
+	mHdlcWithHcsInterface->SetValue( mWithHcsField );
 }
 
 void HdlcAnalyzerSettings::LoadSettings( const char* settings )
@@ -116,6 +126,7 @@ void HdlcAnalyzerSettings::LoadSettings( const char* settings )
 	text_archive >> *( U32* ) &mHdlcControl;
 	text_archive >> *( U32* ) &mHdlcFcs;
 	text_archive >> mSharedZero;
+	text_archive >> mWithHcsField;
 
 	ClearChannels();
 	AddChannel( mInputChannel, "HDLC", true );
@@ -134,6 +145,7 @@ const char* HdlcAnalyzerSettings::SaveSettings()
 	text_archive << U32( mHdlcControl );
 	text_archive << U32( mHdlcFcs );
 	text_archive << mSharedZero;
+	text_archive << mWithHcsField;
 
 	return SetReturnString( text_archive.GetString() );
 }

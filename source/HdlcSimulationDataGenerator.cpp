@@ -26,9 +26,9 @@ void HdlcSimulationDataGenerator::Initialize( U32 simulation_sample_rate, HdlcAn
 	srand( time( NULL ) );
 	
 	double halfPeriod = (1.0 / double( mSettings->mBitRate * 2 ) ) * 1000000.0; 	// half period in useconds.
-	mSamplesInHalfPeriod = USecsToSamples( halfPeriod );		 				// number of samples in a half period.
+	mSamplesInHalfPeriod = USecsToSamples( halfPeriod );		 					// number of samples in a half period.
 	
-	mHdlcSimulationData.Advance( mSamplesInHalfPeriod * 8 );	 				// Advance 4 periods
+	mHdlcSimulationData.Advance( mSamplesInHalfPeriod * 8 );	 					// Advance 4 periods
 	GenerateAbortFramesIndexes();
 	mAbortByte = 0;
 	mFrameNumber = 0;	
@@ -85,13 +85,11 @@ U32 HdlcSimulationDataGenerator::GenerateSimulationData( U64 largest_sample_requ
 		
 		HdlcFrameType frameType = mFrameTypes[ mFrameNumber%3 ];
 		U32 sizeOfInformation = ( frameType == HDLC_S_FRAME ) ? 0 : ( ( rand() % 4 ) + 1 ); 
-		U64 addressBytes= rand() % 4;
+		U64 addressBytes= ( ( rand() % 4 ) + 1 );
 		
 		vector<U8> address = GenAddressField( mSettings->mHdlcAddr, addressBytes, mAddresByteValue++);
 		vector<U8> control = GenControlField( frameType, mSettings->mHdlcControl, mControlValue++);
 		vector<U8> information = GenInformationField( sizeOfInformation, mInformationByteValue++);
-		
-		cerr << "INFORMATION: " << information.size() << "Frame type: " << frameType << endl;
 		
 		CreateHDLCFrame( address, control, information );
 		
@@ -126,14 +124,15 @@ vector<U8> HdlcSimulationDataGenerator::GenAddressField( HdlcAddressType address
 	vector<U8> addrRet;
 	if( addressType == HDLC_BASIC_ADDRESS_FIELD ) 
 	{
-		addrRet.push_back(value);
+		addrRet.push_back( value );
 	}
 	else // addressType == HDLC_EXTENDED_ADDRESS_FIELD
 	{
 		for( U32 i=0; i < addressBytes; ++i ) 
 		{
-			U8 mask = ( i == addressBytes - 1 ) ? 0x00 : 0x01; // EA bit (Lsb is set to 1 to extend the address)
-			addrRet.push_back( ( value & 0xFE ) | mask );
+			U8 mask = ( i == addressBytes - 1 ) ? 0x00 : 0x01; // EA bit (Lsb is set to 1 to extend the address recursively)
+			U8 extValue =  ( value & 0xFE ) | mask;
+			addrRet.push_back( extValue );
 		}
 	}
 	return addrRet;
@@ -214,13 +213,20 @@ void HdlcSimulationDataGenerator::CreateHDLCFrame( const vector<U8> & address, c
 	
 	allFields.insert( allFields.end(), address.begin(), address.end() );
 	allFields.insert( allFields.end(), control.begin(), control.end() );
+	
+	if( mSettings->mWithHcsField && !information.empty() ) // ISO/IEC 13239:2002(E) page 14
+	{
+		vector<U8> hcs = GenFcs( mSettings->mHdlcFcs, allFields );
+		allFields.insert( allFields.end(), hcs.begin(), hcs.end() ); // The final FCS is calculated including the HCS
+	}
+	
 	allFields.insert( allFields.end(), information.begin(), information.end() );
 	
 	// Calculate the crc of the address, control and data fields
 	vector<U8> fcs = GenFcs( mSettings->mHdlcFcs, allFields );
 	allFields.insert( allFields.end(), fcs.begin(), fcs.end() );
 	
-	ModifySomeBits( allFields );
+	// ModifySomeBits( allFields );
 	
 	// Transmit the frame in bit-sync or byte-async
 	if( mSettings->mTransmissionMode == HDLC_TRANSMISSION_BIT_SYNC )

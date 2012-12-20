@@ -39,7 +39,7 @@ protected:
 	vector<HdlcByte> ReadProcessAndFcsField();
 	void InfoAndFcsField( const vector<HdlcByte> & informationAndFcs );
 	void ProcessInformationField( const vector<HdlcByte> & information );
-	void ProcessFcsField( const vector<HdlcByte> & fcs );
+	void ProcessFcsField( const vector<HdlcByte> & fcs, HdlcCrcField crcFieldType );
 	HdlcByte ReadByte();
 	
 	// Bit Sync Transmission functions
@@ -81,6 +81,7 @@ protected:
 	U32 mConsecutiveOnes;
 	bool mReadingFrame;
 	bool mAbortFrame;
+	bool mCurrentFrameIsSFrame;
 	
 	HdlcSimulationDataGenerator mSimulationDataGenerator;
 	bool mSimulationInitilized;
