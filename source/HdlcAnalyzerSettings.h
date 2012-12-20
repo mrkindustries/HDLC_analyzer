@@ -12,9 +12,9 @@
 //    * HDLC transactions not supported
 
 // Inner frames types of HDLC frame (address, control, data, fcs, etc)
-enum HdlcFieldType { HDLC_FIELD_FLAG = 0, HDLC_FIELD_ADDRESS, 
-					 HDLC_FIELD_CONTROL, HDLC_FIELD_INFORMATION, 
-					 HDLC_FIELD_FCS };
+enum HdlcFieldType { HDLC_FIELD_FLAG = 0, HDLC_FIELD_BASIC_ADDRESS, HDLC_FIELD_EXTENDED_ADDRESS, 
+					 HDLC_FIELD_BASIC_CONTROL, HDLC_FIELD_EXTENDED_CONTROL, 
+					 HDLC_FIELD_INFORMATION, HDLC_FIELD_FCS, HDLC_ESCAPE_SEQ, HDLC_ABORT_SEQ };
 // Transmission mode (bit stuffing or byte stuffing)
 enum HdlcTransmissionModeType { HDLC_TRANSMISSION_BIT_SYNC = 0, HDLC_TRANSMISSION_BYTE_ASYNC };
 // Types of HDLC frames (Information, Supervisory and Unnumbered)
@@ -27,13 +27,14 @@ enum HdlcControlType { HDLC_BASIC_CONTROL_FIELD,
 					   HDLC_EXTENDED_CONTROL_FIELD_MOD_32768, 
 					   HDLC_EXTENDED_CONTROL_FIELD_MOD_2147483648 };
 // Frame Check Sequence algorithm
-enum HdlcFcsType { HDLC_CRC8 = 0, HDLC_CRC16, HDLC_CRC32 };
+enum HdlcFcsType { HDLC_CRC8 = 0, HDLC_CRC16 = 1, HDLC_CRC32 = 2 };
+// Flag Field Type (Start, End or Fill)
+enum HdlcFlagType { HDLC_FLAG_START = 0, HDLC_FLAG_END = 1, HDLC_FLAG_FILL = 2 };
+
 
 // Special values for Byte Asynchronous Transmission
 #define HDLC_FLAG_VALUE 0x7E
-#define HDLC_FLAG_BIT5INV_VALUE 0x5E
 #define HDLC_ESCAPE_SEQ_VALUE 0x7D
-#define HDLC_ESCAPE_SEQ_BIT5INV_VALUE 0x5D
 #define HDLC_FILL_VALUE 0xFF
 
 /////////////////////////////////////
@@ -56,6 +57,7 @@ public:
 	HdlcAddressType mHdlcAddr;
 	HdlcControlType mHdlcControl;	
 	HdlcFcsType mHdlcFcs;
+	bool mSharedZero;
 	
 	
 protected:
@@ -65,6 +67,7 @@ protected:
 	std::auto_ptr< AnalyzerSettingInterfaceNumberList >	mHdlcTransmissionInterface;
 	std::auto_ptr< AnalyzerSettingInterfaceNumberList >	mHdlcControlInterface;
 	std::auto_ptr< AnalyzerSettingInterfaceNumberList >	mHdlcFcsInterface;
+	std::auto_ptr< AnalyzerSettingInterfaceBool > mHdlcSharedZeroInterface;
 };
 
 #endif //HDLC_ANALYZER_SETTINGS
