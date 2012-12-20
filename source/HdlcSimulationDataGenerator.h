@@ -17,9 +17,11 @@ public:
 	void Initialize( U32 simulation_sample_rate, HdlcAnalyzerSettings* settings );
 	U32 GenerateSimulationData( U64 newest_sample_requested, U32 sample_rate, SimulationChannelDescriptor** simulation_channel );
 	
-	static vector<U8> Crc8( const vector<U8> & stream );
-	static vector<U8> Crc16( const vector<U8> & stream );
-	static vector<U8> Crc32( const vector<U8> & stream );
+	static vector<U8> Crc8( const vector<U8> & stream, const vector<U8> & append = vector<U8>() );
+	static vector<U8> Crc16( const vector<U8> & stream, const vector<U8> & append = vector<U8>() );
+	static vector<U8> Crc32( const vector<U8> & stream, const vector<U8> & append = vector<U8>() );
+	static vector<U8> CrcDivision( const vector<U8> & stream, const vector<U8> & genPoly, U32 crcNumber );
+	static vector<BitState> BytesVectorToBitsVector( const vector<U8> & v, U32 numberOfBits );
 	static U8 Bit5Inv( U8 value );
 
 protected:
@@ -38,9 +40,13 @@ protected:
 	void AsyncByteFill( U32 N );
 	
 	// Helper functions
-	bool AbortFrame( U32 N, U32 & index ) const;
+	void ModifySomeBits( vector<U8> & allFields ) const;
+	bool AbortFrameAndGenIndex( U32 N );
 	U64 USecsToSamples( U64 us ) const;
 	vector<U8> GenFcs( HdlcFcsType fcsType, const vector<U8> & stream ) const;
+	
+	void GenerateAbortFramesIndexes();
+	bool ContainsElement( U32 index ) const;
 	
 	vector<U8> GenAddressField( HdlcAddressType addressType, U64 addressBytes, U8 value ) const;
 	vector<U8> GenControlField( HdlcFrameType frameType, HdlcControlType controlType, U8 value ) const;
@@ -49,6 +55,19 @@ protected:
 	HdlcAnalyzerSettings* mSettings;
 	U32 mSimulationSampleRateHz;
 	
+	vector<U32> mAbortFramesIndexes;
+	U32 mFrameNumber;
+	U32 mAbortByte;
+	bool mFirstFlag;
+	bool mLastFlag;
+	U32 mWrongFramesSeparation;
+	
+	U8 mControlValue;
+	U8 mAddresByteValue;
+	U8 mInformationByteValue;
+	
+	HdlcFrameType mFrameTypes[ 3 ];
+		
 	SimulationChannelDescriptor mHdlcSimulationData;
 	
 	U64 mSamplesInHalfPeriod;
