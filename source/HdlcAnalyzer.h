@@ -80,6 +80,7 @@ protected:
 	U32 mSamplesIn8Bits;
 	
 	vector<U8> mCurrentFrameBytes;
+	vector<U8> mCurrentFrameBytesForHCS;
 	
 	BitState mPreviousBitState;
 	U32 mConsecutiveOnes;

@@ -73,11 +73,13 @@ void HdlcAnalyzer::WorkerThread()
 void HdlcAnalyzer::ProcessHDLCFrame()
 {
 	mCurrentFrameBytes.clear();
+	mCurrentFrameBytesForHCS.clear();
 	
 	HdlcByte addressByte = ProcessFlags();
 	
 	ProcessAddressField( addressByte );
 	ProcessControlField();
+	mCurrentFrameBytesForHCS = mCurrentFrameBytes;
 	ProcessInfoAndFcsField();
 	
 	if( mAbortFrame ) // The frame has been aborted at some point
@@ -582,29 +584,50 @@ void HdlcAnalyzer::ProcessFcsField( const vector<HdlcByte> & fcs, HdlcCrcField c
 	{
 		case HDLC_CRC8:
 		{
-			if( !mCurrentFrameBytes.empty() )
+			if( crcFieldType == HDLC_CRC_FCS )
 			{
-				mCurrentFrameBytes.pop_back();
+				if( !mCurrentFrameBytes.empty() )
+				{
+					mCurrentFrameBytes.pop_back();
+				}
+				calculatedFcs = HdlcSimulationDataGenerator::Crc8( mCurrentFrameBytes, readFcs );
 			}
-			calculatedFcs = HdlcSimulationDataGenerator::Crc8( mCurrentFrameBytes, readFcs );
+			else
+			{
+				calculatedFcs = HdlcSimulationDataGenerator::Crc8( mCurrentFrameBytesForHCS, readFcs );
+			}
 			break;
 		}
 		case HDLC_CRC16:
 		{
-			if( mCurrentFrameBytes.size() >= 2 )
+			if( crcFieldType == HDLC_CRC_FCS )
 			{
-				mCurrentFrameBytes.erase( mCurrentFrameBytes.end()-2, mCurrentFrameBytes.end() );
+				if( mCurrentFrameBytes.size() >= 2 )
+				{
+					mCurrentFrameBytes.erase( mCurrentFrameBytes.end()-2, mCurrentFrameBytes.end() );
+				}
+				calculatedFcs = HdlcSimulationDataGenerator::Crc16( mCurrentFrameBytes, readFcs );
 			}
-			calculatedFcs = HdlcSimulationDataGenerator::Crc16( mCurrentFrameBytes, readFcs );
+			else
+			{
+				calculatedFcs = HdlcSimulationDataGenerator::Crc16( mCurrentFrameBytesForHCS, readFcs );
+			}
 			break;
 		}
 		case HDLC_CRC32:
 		{
-			if( mCurrentFrameBytes.size() >= 4 )
+			if( crcFieldType == HDLC_CRC_FCS )
 			{
-				mCurrentFrameBytes.erase( mCurrentFrameBytes.end()-4, mCurrentFrameBytes.end() );
+				if( mCurrentFrameBytes.size() >= 4 )
+				{
+					mCurrentFrameBytes.erase( mCurrentFrameBytes.end()-4, mCurrentFrameBytes.end() );
+				}
+				calculatedFcs = HdlcSimulationDataGenerator::Crc32( mCurrentFrameBytes, readFcs );
 			}
-			calculatedFcs = HdlcSimulationDataGenerator::Crc32( mCurrentFrameBytes, readFcs );
+			else
+			{
+				calculatedFcs = HdlcSimulationDataGenerator::Crc32( mCurrentFrameBytesForHCS, readFcs );
+			}
 			break;
 		}
 	}

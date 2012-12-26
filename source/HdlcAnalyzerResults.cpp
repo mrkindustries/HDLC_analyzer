@@ -348,6 +348,7 @@ void HdlcAnalyzerResults::GenerateExportFile( const char* file, DisplayBase disp
 				// Check for abort
 				if( nextAddress.mType == HDLC_ABORT_SEQ )
 				{
+					fileStream << "," << endl;
 					doAbortFrame = true;
 					break;
 				}
@@ -392,6 +393,7 @@ void HdlcAnalyzerResults::GenerateExportFile( const char* file, DisplayBase disp
 		
 		// 3) Control Field
 		bool isSFrame = false;
+		bool isUFrame = false;
 		for( U32 i=0 ; i < numberOfControlBytes; ++i )
 		{
 			
@@ -422,9 +424,9 @@ void HdlcAnalyzerResults::GenerateExportFile( const char* file, DisplayBase disp
 			if( i == 0 )
 			{
 				isSFrame = ( HdlcAnalyzer::GetFrameType( controlFrame.mData1 ) == HDLC_S_FRAME );
+				isUFrame = HdlcAnalyzer::GetFrameType( controlFrame.mData1 ) == HDLC_U_FRAME;
 			}
 			
-			bool isUFrame = HdlcAnalyzer::GetFrameType( controlFrame.mData1 ) == HDLC_U_FRAME;
 			char controlStr[64];
 			AnalyzerHelpers::GetNumberString( controlFrame.mData1, display_base, 8, controlStr, 64 );
 			string sep = ( isUFrame || mSettings->mHdlcControl == HDLC_BASIC_CONTROL_FIELD ) ? string() : string("*") ;
@@ -470,6 +472,18 @@ void HdlcAnalyzerResults::GenerateExportFile( const char* file, DisplayBase disp
 				AnalyzerHelpers::GetNumberString( hcsFrame.mData1, display_base, 32, hcsStr, 128 );
 				fileStream << hcsStr << ",";
 			}
+			
+			frameNumber++;
+			if( frameNumber >= numFrames ) 
+			{ 
+				UpdateExportProgressAndCheckForCancel( frameNumber, numFrames );
+				return; 
+			}
+			
+		}
+		else
+		{
+			fileStream << ",";
 		}
 		
 		// 5) Information Fields
