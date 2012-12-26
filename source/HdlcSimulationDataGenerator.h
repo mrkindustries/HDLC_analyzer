@@ -22,7 +22,6 @@ public:
 	static vector<U8> Crc32( const vector<U8> & stream, const vector<U8> & append = vector<U8>() );
 	static vector<U8> CrcDivision( const vector<U8> & stream, const vector<U8> & genPoly, U32 crcNumber );
 	static vector<BitState> BytesVectorToBitsVector( const vector<U8> & v, U32 numberOfBits );
-	static U8 Bit5Inv( U8 value );
 
 protected:
 	
@@ -71,6 +70,7 @@ protected:
 	SimulationChannelDescriptor mHdlcSimulationData;
 	
 	U64 mSamplesInHalfPeriod;
+	U64 mSamplesInAFlag;
 	
 };
 #endif //HDLC_SIMULATION_DATA_GENERATOR

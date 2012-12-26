@@ -85,6 +85,11 @@ HdlcAnalyzerSettings::~HdlcAnalyzerSettings()
 {
 }
 
+U8 HdlcAnalyzerSettings::Bit5Inv( U8 value ) 
+{
+	return value ^ 0x20;
+}
+
 bool HdlcAnalyzerSettings::SetSettingsFromInterfaces()
 {
 	mInputChannel = mInputChannelInterface->GetChannel();

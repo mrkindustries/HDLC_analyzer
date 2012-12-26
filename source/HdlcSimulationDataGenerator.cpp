@@ -26,7 +26,8 @@ void HdlcSimulationDataGenerator::Initialize( U32 simulation_sample_rate, HdlcAn
 	srand( time( NULL ) );
 	
 	double halfPeriod = (1.0 / double( mSettings->mBitRate * 2 ) ) * 1000000.0; 	// half period in useconds.
-	mSamplesInHalfPeriod = USecsToSamples( halfPeriod );		 					// number of samples in a half period.
+	mSamplesInHalfPeriod = U64( ( mSimulationSampleRateHz * halfPeriod ) / 1000000.0 );		// number of samples in a half period.
+	mSamplesInAFlag = mSamplesInHalfPeriod * 7;
 	
 	mHdlcSimulationData.Advance( mSamplesInHalfPeriod * 8 );	 					// Advance 4 periods
 	GenerateAbortFramesIndexes();
@@ -338,7 +339,7 @@ void HdlcSimulationDataGenerator::CreateFlagBitSeq()
 		mHdlcSimulationData.Transition();
 	}
 	
-	mHdlcSimulationData.Advance( mSamplesInHalfPeriod * 7 );
+	mHdlcSimulationData.Advance( mSamplesInAFlag );
 	mHdlcSimulationData.Transition();
 	
 	if( !mSettings->mSharedZero ) // If not shared zero
@@ -368,6 +369,15 @@ void HdlcSimulationDataGenerator::TransmitByteAsync( const vector<U8> & stream )
 	
 	bool abortFrame = ContainsElement( mFrameNumber );
 	
+	cerr << "Frame bytes: ";
+	for( U32 i=0; i < stream.size(); ++i )
+	{
+		const U8 byte = stream[ i ];
+		cerr << int(byte) << " ";
+	}
+	cerr << endl;
+	
+	
 	for( U32 i=0; i < stream.size(); ++i )
 	{
 		
@@ -386,11 +396,11 @@ void HdlcSimulationDataGenerator::TransmitByteAsync( const vector<U8> & stream )
 		{
 			case HDLC_FLAG_VALUE: // 0x7E
 				CreateAsyncByte( HDLC_ESCAPE_SEQ_VALUE );			// 7D escape
-				CreateAsyncByte( Bit5Inv(HDLC_FLAG_VALUE) );		// 5E
+				CreateAsyncByte( HdlcAnalyzerSettings::Bit5Inv( HDLC_FLAG_VALUE ) );		// 5E
 				break;
 			case HDLC_ESCAPE_SEQ_VALUE: // 0x7D
 				CreateAsyncByte( HDLC_ESCAPE_SEQ_VALUE );			// 7D escape
-				CreateAsyncByte( Bit5Inv(HDLC_ESCAPE_SEQ_VALUE) );	// 5D
+				CreateAsyncByte( HdlcAnalyzerSettings::Bit5Inv( HDLC_ESCAPE_SEQ_VALUE ) );	// 5D
 				break;
 			default:
 				CreateAsyncByte( byte );							// normal byte
@@ -625,9 +635,4 @@ vector<U8> HdlcSimulationDataGenerator::Crc32( const vector<U8> & stream, const 
 	vector<U8> crc32Ret = CrcDivision( result, divisor, 32 );
 	return crc32Ret;
 
-}
-
-U8 HdlcSimulationDataGenerator::Bit5Inv( U8 value ) 
-{
-	return value ^ 0x20;
 }
