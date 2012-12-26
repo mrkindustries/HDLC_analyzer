@@ -247,7 +247,17 @@ void HdlcAnalyzerResults::GenAbortFieldString( bool tabular )
 		AddResultString( "AB!" );
 		AddResultString( "ABORT!" );
 	}
-	AddResultString( "ABORT SEQUENCE! ( 0x7D - 0x7F )" );
+	char* seq = 0;
+	if( mSettings->mTransmissionMode == HDLC_TRANSMISSION_BIT_SYNC )
+	{
+		seq = "(>=7 1-bits)";
+	}
+	else
+	{
+		seq = "(0x7D-0x7F)";
+	}
+	
+	AddResultString( "ABORT SEQUENCE!", seq );
 }
 
 string HdlcAnalyzerResults::EscapeByteStr( const Frame & frame )
@@ -368,6 +378,7 @@ void HdlcAnalyzerResults::GenerateExportFile( const char* file, DisplayBase disp
 				
 				if( endOfAddress ) // no more bytes of address?
 				{
+					fileStream << ",";
 					break;
 				}
 				else
@@ -388,8 +399,6 @@ void HdlcAnalyzerResults::GenerateExportFile( const char* file, DisplayBase disp
 		{
 			continue;
 		}
-		
-		fileStream << ",";
 		
 		// 3) Control Field
 		bool isSFrame = false;

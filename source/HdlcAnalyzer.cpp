@@ -28,7 +28,7 @@ void HdlcAnalyzer::SetupAnalyzer()
 	mResults->AddChannelBubblesWillAppearOn( mSettings->mInputChannel );
 	mHdlc = GetAnalyzerChannelData( mSettings->mInputChannel );
 
-	double halfPeriod = ( 1.0 / double( mSettings->mBitRate * 2 ) ) * 1000000.0;
+	double halfPeriod = ( 1.0 / double( mSettings->mBitRate ) ) * 1000000.0;
 	mSampleRateHz = GetSampleRate();
 	mSamplesInHalfPeriod = U64( ( mSampleRateHz * halfPeriod ) / 1000000.0 );
 	mSamplesInAFlag = mSamplesInHalfPeriod * 7;
@@ -40,8 +40,8 @@ void HdlcAnalyzer::SetupAnalyzer()
 	mReadingFrame = false;
 	mAbortFrame = false;
 	mCurrentFrameIsSFrame = false;
+	mBitStuffingActive = true;
 	
-	//cerr << "Sample Rate: " << mSampleRateHz << " - Bit Rate: " << mSettings->mBitRate << " - Samples in Half period: " << mSamplesInHalfPeriod << endl;
 }
 
 void HdlcAnalyzer::WorkerThread()
@@ -127,6 +127,22 @@ void HdlcAnalyzer::BitSyncProcessFlags()
 	vector<HdlcByte> flags;
 	for( ; ; )
 	{
+		
+		if( AbortComing() )
+		{
+			// Show fill flags
+			for( U32 i=0; i < flags.size(); ++i )
+			{	
+				Frame frame = CreateFrame( HDLC_FIELD_FLAG, flags.at(i).startSample, 
+										flags.at(i).endSample, HDLC_FLAG_FILL );
+				mResults->AddFrame( frame );
+			}
+			flags.clear();
+			mHdlc->AdvanceToNextEdge();
+			flagEncountered = false;
+			continue;
+		}
+		
 		if( FlagComing() )
 		{
 			HdlcByte bs;
@@ -195,6 +211,13 @@ BitState HdlcAnalyzer::BitSyncReadBit()
 			mHdlc->Advance( mSamplesInHalfPeriod );
 			mConsecutiveOnes = 0;
 			mPreviousBitState = mHdlc->GetBitState();
+			/*
+			if( bit == mPreviousBitState )
+			{
+				cerr << "5 consec: " << bit << " " << mPreviousBitState << endl;
+				mAbortFrame = true;
+			}
+			*/
 		}
 		else 
 		{
@@ -226,7 +249,7 @@ bool HdlcAnalyzer::AbortComing()
 {
 	// At least 7 bits in 1...
 	// TODO: check here if tolerance
-	return !mHdlc->WouldAdvancingCauseTransition( mSamplesIn7Bits + mSamplesInHalfPeriod * 0.5 );
+	return !mHdlc->WouldAdvancingCauseTransition( mSamplesInAFlag + mSamplesInHalfPeriod * 0.5 );
 }
 
 HdlcByte HdlcAnalyzer::BitSyncReadByte()
@@ -252,12 +275,12 @@ HdlcByte HdlcAnalyzer::BitSyncReadByte()
 		HdlcByte bs = { startSample, endSample, HDLC_FLAG_VALUE };
 		return bs;
 	}
-
+	
 	U64 byteValue= 0;
 	DataBuilder dbyte;
 	dbyte.Reset( &byteValue, AnalyzerEnums::LsbFirst, 8 );
 	U64 startSample = mHdlc->GetSampleNumber();
-	for( U32 i=0; i<8 ; ++i )
+	for( U32 i=0; i < 8 ; ++i )
 	{
 		BitState bit = BitSyncReadBit();
 		dbyte.AddBit( bit );
@@ -437,6 +460,7 @@ void HdlcAnalyzer::ProcessControlField()
 
 vector<HdlcByte> HdlcAnalyzer::ReadProcessAndFcsField()
 {
+	
 	vector<HdlcByte> infoAndFcs;
 	for( ; ; )
 	{
@@ -559,7 +583,6 @@ void HdlcAnalyzer::ProcessInformationField( const vector<HdlcByte> & information
 		Frame frame = CreateFrame( HDLC_FIELD_INFORMATION, byte.startSample, 
 								   byte.endSample, byte.value, i, flag );
 		mResults->AddFrame( frame );
-		//mCurrentFrameBytes.push_back( byte.value ); // append control byte
 	}
 }
 
@@ -632,12 +655,14 @@ void HdlcAnalyzer::ProcessFcsField( const vector<HdlcByte> & fcs, HdlcCrcField c
 		}
 	}
 	
+	/*
 	cerr << "CRC calculated over: ";
 	for(U32 i=0; i < mCurrentFrameBytes.size(); ++i)
 	{
 		cerr << int(mCurrentFrameBytes.at(i)) << " ";
 	}
 	cerr << endl;
+	*/
 	
 	HdlcFieldType frameType = ( crcFieldType == HDLC_CRC_HCS ) ? HDLC_FIELD_HCS : HDLC_FIELD_FCS;
 	Frame frame = CreateFrame( frameType, fcs.front().startSample, fcs.back().endSample, 

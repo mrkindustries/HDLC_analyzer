@@ -25,7 +25,7 @@ void HdlcSimulationDataGenerator::Initialize( U32 simulation_sample_rate, HdlcAn
 	// Initialize rng seed 
 	srand( time( NULL ) );
 	
-	double halfPeriod = (1.0 / double( mSettings->mBitRate * 2 ) ) * 1000000.0; 	// half period in useconds.
+	double halfPeriod = (1.0 / double( mSettings->mBitRate ) ) * 1000000.0; 	// half period in useconds.
 	mSamplesInHalfPeriod = U64( ( mSimulationSampleRateHz * halfPeriod ) / 1000000.0 );		// number of samples in a half period.
 	mSamplesInAFlag = mSamplesInHalfPeriod * 7;
 	
@@ -373,6 +373,7 @@ void HdlcSimulationDataGenerator::TransmitByteAsync( const vector<U8> & stream )
 	
 	bool abortFrame = ContainsElement( mFrameNumber );
 	
+	/*
 	cerr << "Frame bytes: ";
 	for( U32 i=0; i < stream.size(); ++i )
 	{
@@ -380,6 +381,7 @@ void HdlcSimulationDataGenerator::TransmitByteAsync( const vector<U8> & stream )
 		cerr << int(byte) << " ";
 	}
 	cerr << endl;
+	*/
 	
 	
 	for( U32 i=0; i < stream.size(); ++i )

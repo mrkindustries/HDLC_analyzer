@@ -90,6 +90,7 @@ protected:
 	HdlcFieldType mCurrentField;
 	Frame mAbortFrameToEmit;
 	Frame mEndFlagFrameToEmit;
+	bool mBitStuffingActive;
 	
 	HdlcSimulationDataGenerator mSimulationDataGenerator;
 	bool mSimulationInitilized;
