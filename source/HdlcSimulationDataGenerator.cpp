@@ -148,12 +148,17 @@ vector<U8> HdlcSimulationDataGenerator::GenControlField( HdlcFrameType frameType
 	U8 ctrl;
 	switch( frameType ) 
 	{
+		case HDLC_I_FRAME: ctrl = ( value & 0xFE ) | U8( frameType ); break; 
+		case HDLC_S_FRAME: ctrl = ( value & 0xFC ) | U8( frameType ); break;
+		case HDLC_U_FRAME: ctrl = value | U8( HDLC_U_FRAME );
+	}
+
+	switch( frameType ) 
+	{
 		case HDLC_I_FRAME: 
-			ctrl = ( value & 0xFE ) | U8( frameType );
 		case HDLC_S_FRAME:
 		{
 			// first byte
-			ctrl = ( value & 0xFC ) | U8( frameType );
 			controlRet.push_back( ctrl );
 			switch( controlType ) 
 			{
@@ -179,7 +184,6 @@ vector<U8> HdlcSimulationDataGenerator::GenControlField( HdlcFrameType frameType
 		}
 		case HDLC_U_FRAME: // U frames are always of 8 bits 
 		{
-			ctrl = value | U8( HDLC_U_FRAME );
 			controlRet.push_back( ctrl );
 			break;
 		}
