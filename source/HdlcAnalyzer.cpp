@@ -40,7 +40,6 @@ void HdlcAnalyzer::SetupAnalyzer()
 	mReadingFrame = false;
 	mAbortFrame = false;
 	mCurrentFrameIsSFrame = false;
-	mBitStuffingActive = true;
 	
 }
 
@@ -196,6 +195,7 @@ void HdlcAnalyzer::BitSyncProcessFlags()
 	
 }
 
+// Read bit with bit-stuffing
 BitState HdlcAnalyzer::BitSyncReadBit()
 {
 	BitState ret;
@@ -208,16 +208,37 @@ BitState HdlcAnalyzer::BitSyncReadBit()
 		mConsecutiveOnes++;
 		if( mReadingFrame && mConsecutiveOnes == 5 )
 		{
-			mHdlc->Advance( mSamplesInHalfPeriod );
-			mConsecutiveOnes = 0;
-			mPreviousBitState = mHdlc->GetBitState();
+			
 			/*
-			if( bit == mPreviousBitState )
+			 * NOTE: error...
+			if( mHdlc->WouldAdvancingCauseTransition( mSamplesInHalfPeriod ) )
 			{
-				cerr << "5 consec: " << bit << " " << mPreviousBitState << endl;
-				mAbortFrame = true;
+				cerr << "Look over here!" << endl;
+				mResults->AddMarker( some + mSamplesInHalfPeriod , AnalyzerResults::ErrorX, mSettings->mInputChannel );
 			}
 			*/
+			
+			U64 currentPos = mHdlc->GetSampleNumber();
+			//mResults->AddMarker( currentPos, AnalyzerResults::X, mSettings->mInputChannel );
+			
+			// Check for 0-bit insertion (i.e. line toggle)
+			if( mHdlc->GetSampleOfNextEdge() < currentPos + mSamplesInHalfPeriod )
+			{
+				//mResults->AddMarker( currentPos + mSamplesInHalfPeriod , AnalyzerResults::X, mSettings->mInputChannel );
+			
+				// Advance to the next edge to re-synchronize the analyzer
+				mHdlc->AdvanceToNextEdge();
+				mHdlc->Advance( mSamplesInHalfPeriod * 0.5 );
+				
+				mPreviousBitState = mHdlc->GetBitState();
+				mConsecutiveOnes = 0;
+			}
+			else // Abort!
+			{
+				mConsecutiveOnes = 0;
+				mAbortFrame = true;				
+			}
+			
 		}
 		else 
 		{
@@ -230,7 +251,6 @@ BitState HdlcAnalyzer::BitSyncReadBit()
 	{
 		mConsecutiveOnes = 0;
 		mPreviousBitState = bit;
-		
 		ret = BIT_LOW;
 	}
 	
@@ -254,6 +274,9 @@ bool HdlcAnalyzer::AbortComing()
 
 HdlcByte HdlcAnalyzer::BitSyncReadByte()
 {
+	
+	//mResults->AddMarker( mHdlc->GetSampleNumber(), AnalyzerResults::X, mSettings->mInputChannel );
+	
 	if( mReadingFrame && AbortComing() )
 	{
 			// Create "Abort Frame" frame
@@ -282,7 +305,7 @@ HdlcByte HdlcAnalyzer::BitSyncReadByte()
 	U64 startSample = mHdlc->GetSampleNumber();
 	for( U32 i=0; i < 8 ; ++i )
 	{
-		BitState bit = BitSyncReadBit();
+		BitState bit = BitSyncReadBit(); if( mAbortFrame ) { return HdlcByte(); }
 		dbyte.AddBit( bit );
 	}
 	U64 endSample = mHdlc->GetSampleNumber() - mSamplesInHalfPeriod;
