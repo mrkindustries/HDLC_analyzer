@@ -2,6 +2,9 @@
 #define HDLC_ANALYZER_RESULTS
 
 #include <AnalyzerResults.h>
+#include <string>
+
+using namespace std;
 
 class HdlcAnalyzer;
 class HdlcAnalyzerSettings;
@@ -27,8 +30,10 @@ protected: //functions
 	void GenControlFieldString( const Frame & frame, DisplayBase display_base, bool tabular );
 	void GenInformationFieldString( const Frame & frame, DisplayBase display_base, bool tabular );
 	void GenFcsFieldString( const Frame & frame, DisplayBase display_base, bool tabular );
-	void GenEscapeFieldString( bool tabular );
 	void GenAbortFieldString( bool tabular );
+	
+	string EscapeByteStr( const Frame & frame );
+	string GenEscapedString( const Frame & frame );
 	
 protected:  //vars
 	HdlcAnalyzerSettings* mSettings;

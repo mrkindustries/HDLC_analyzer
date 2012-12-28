@@ -10,6 +10,7 @@ struct HdlcByte
 	U64 startSample;
 	U64 endSample;
 	U8 value;
+	bool escaped;
 };
 
 class HdlcAnalyzerSettings;
@@ -25,7 +26,9 @@ public:
 
 	virtual const char* GetAnalyzerName() const;
 	virtual bool NeedsRerun();
-
+	
+	static HdlcFrameType GetFrameType( U8 value );
+	
 protected:
 	
 	void SetupAnalyzer();
@@ -39,7 +42,7 @@ protected:
 	vector<HdlcByte> ReadProcessAndFcsField();
 	void InfoAndFcsField( const vector<HdlcByte> & informationAndFcs );
 	void ProcessInformationField( const vector<HdlcByte> & information );
-	void ProcessFcsField( const vector<HdlcByte> & fcs );
+	void ProcessFcsField( const vector<HdlcByte> & fcs, HdlcCrcField crcFieldType );
 	HdlcByte ReadByte();
 	
 	// Bit Sync Transmission functions
@@ -58,7 +61,6 @@ protected:
 	
 	// Helper functions
 	bool CrcOk( const vector<U8> & remainder ) const;
-	HdlcFrameType GetFrameType( U8 value ) const;
 	Frame CreateFrame( U8 mType, U64 mStartingSampleInclusive, U64 mEndingSampleInclusive, 
 					   U64 mData1=0, U64 mData2=0, U8 mFlags=0 ) const;
 	vector<U8> HdlcBytesToVectorBytes( const vector<HdlcByte> & asyncBytes ) const;
@@ -71,16 +73,21 @@ protected:
 	AnalyzerChannelData* mHdlc;
 	
 	U32 mSampleRateHz;
-	U32 mSamplesInHalfPeriod;
-	U32 mSamplesIn7Bits;
+	U64 mSamplesInHalfPeriod;
+	U64 mSamplesInAFlag;
 	U32 mSamplesIn8Bits;
 	
 	vector<U8> mCurrentFrameBytes;
+	vector<U8> mCurrentFrameBytesForHCS;
 	
 	BitState mPreviousBitState;
 	U32 mConsecutiveOnes;
 	bool mReadingFrame;
 	bool mAbortFrame;
+	bool mCurrentFrameIsSFrame;
+	HdlcFieldType mCurrentField;
+	Frame mAbortFrameToEmit;
+	Frame mEndFlagFrameToEmit;
 	
 	HdlcSimulationDataGenerator mSimulationDataGenerator;
 	bool mSimulationInitilized;
