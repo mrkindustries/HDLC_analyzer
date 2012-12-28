@@ -27,8 +27,9 @@ void HdlcAnalyzer::SetupAnalyzer()
 	mResults->AddChannelBubblesWillAppearOn( mSettings->mInputChannel );
 	mHdlc = GetAnalyzerChannelData( mSettings->mInputChannel );
 
+	double halfPeriod = ( 1.0 / double( mSettings->mBitRate ) ) * 1000000.0;
 	mSampleRateHz = GetSampleRate();
-	mSamplesInHalfPeriod = U64( mSampleRateHz / double( mSettings->mBitRate ) );
+	mSamplesInHalfPeriod = U64( ( mSampleRateHz * halfPeriod ) / 1000000.0 );
 	mSamplesInAFlag = mSamplesInHalfPeriod * 7;
 	mSamplesIn8Bits = mSamplesInHalfPeriod * 8;
 	
@@ -244,9 +245,10 @@ BitState HdlcAnalyzer::BitSyncReadBit()
 	return ret;
 }
 
+// TODO: Check tolerance here!
 bool HdlcAnalyzer::FlagComing()
 {
-	return !mHdlc->WouldAdvancingCauseTransition( mSamplesInAFlag - mSamplesInHalfPeriod * 0.5 ) &&
+	return !mHdlc->WouldAdvancingCauseTransition( mSamplesInAFlag - mSamplesInHalfPeriod  * 0.5 ) &&
 		   mHdlc->WouldAdvancingCauseTransition( mSamplesInAFlag + mSamplesInHalfPeriod * 0.5 );
 }
 

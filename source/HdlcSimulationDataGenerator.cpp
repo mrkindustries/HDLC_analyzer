@@ -25,11 +25,11 @@ void HdlcSimulationDataGenerator::Initialize( U32 simulation_sample_rate, HdlcAn
 	
 	// Initialize rng seed 
 	srand( time( NULL ) );
-	
+
 	mSamplesInHalfPeriod = U64( simulation_sample_rate / double( mSettings->mBitRate ) );
 	mSamplesInAFlag = mSamplesInHalfPeriod * 7;
 	
-	mHdlcSimulationData.Advance( mSamplesInHalfPeriod * 8 );	 					// Advance 4 periods
+	mHdlcSimulationData.Advance( mSamplesInHalfPeriod * 8 ); // Advance 4 periods
 	GenerateAbortFramesIndexes();
 	mAbortByte = 0;
 	mFrameNumber = 0;	
