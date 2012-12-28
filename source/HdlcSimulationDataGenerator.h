@@ -41,7 +41,6 @@ protected:
 	// Helper functions
 	void ModifySomeBits( vector<U8> & allFields ) const;
 	bool AbortFrameAndGenIndex( U32 N );
-	U64 USecsToSamples( U64 us ) const;
 	vector<U8> GenFcs( HdlcFcsType fcsType, const vector<U8> & stream ) const;
 	
 	void GenerateAbortFramesIndexes();

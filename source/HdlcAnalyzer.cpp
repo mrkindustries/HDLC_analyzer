@@ -205,23 +205,11 @@ BitState HdlcAnalyzer::BitSyncReadBit()
 		mConsecutiveOnes++;
 		if( mReadingFrame && mConsecutiveOnes == 5 )
 		{
-			
-			/*
-			 * NOTE: error...
-			if( mHdlc->WouldAdvancingCauseTransition( mSamplesInHalfPeriod ) )
-			{
-				cerr << "Look over here!" << endl;
-				mResults->AddMarker( some + mSamplesInHalfPeriod , AnalyzerResults::ErrorX, mSettings->mInputChannel );
-			}
-			*/
-			
 			U64 currentPos = mHdlc->GetSampleNumber();
-			//mResults->AddMarker( currentPos, AnalyzerResults::X, mSettings->mInputChannel );
 			
 			// Check for 0-bit insertion (i.e. line toggle)
 			if( mHdlc->GetSampleOfNextEdge() < currentPos + mSamplesInHalfPeriod )
 			{
-				
 				// Advance to the next edge to re-synchronize the analyzer
 				mHdlc->AdvanceToNextEdge();
 				// Mark the bit-stuffing
@@ -269,9 +257,6 @@ bool HdlcAnalyzer::AbortComing()
 
 HdlcByte HdlcAnalyzer::BitSyncReadByte()
 {
-	
-	//mResults->AddMarker( mHdlc->GetSampleNumber(), AnalyzerResults::X, mSettings->mInputChannel );
-	
 	if( mReadingFrame && AbortComing() )
 	{
 			// Create "Abort Frame" frame
@@ -317,7 +302,7 @@ HdlcByte HdlcAnalyzer::BitSyncReadByte()
 HdlcByte HdlcAnalyzer::ByteAsyncProcessFlags()
 {
 	bool flagEncountered = false;
-	// 1) Read bytes until non-flag byte
+	// Read bytes until non-flag byte
 	vector<HdlcByte> readBytes;
 	
 	mCurrentField = ( mSettings->mHdlcAddr == HDLC_BASIC_ADDRESS_FIELD ) 
@@ -672,6 +657,7 @@ void HdlcAnalyzer::ProcessFcsField( const vector<HdlcByte> & fcs, HdlcCrcField c
 		}
 	}
 	
+	/*
 	cerr << "CRC read: ";
 	for(U32 i=0; i < readFcs.size(); ++i)
 	{
@@ -685,6 +671,7 @@ void HdlcAnalyzer::ProcessFcsField( const vector<HdlcByte> & fcs, HdlcCrcField c
 		cerr << int(calculatedFcs.at(i)) << " ";
 	}
 	cerr << endl;
+	*/
 	
 	HdlcFieldType frameType = ( crcFieldType == HDLC_CRC_HCS ) ? HDLC_FIELD_HCS : HDLC_FIELD_FCS;
 	Frame frame = CreateFrame( frameType, fcs.front().startSample, fcs.back().endSample, 

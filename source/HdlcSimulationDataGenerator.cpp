@@ -46,11 +46,6 @@ void HdlcSimulationDataGenerator::Initialize( U32 simulation_sample_rate, HdlcAn
 	mFrameTypes[ 2 ] = HDLC_U_FRAME;
 }
 
-U64 HdlcSimulationDataGenerator::USecsToSamples( U64 us ) const
-{
-	return ( mSimulationSampleRateHz * us ) / 1000000;
-}
-
 void HdlcSimulationDataGenerator::GenerateAbortFramesIndexes()
 {
 	mAbortFramesIndexes.push_back( rand() % 50 );
