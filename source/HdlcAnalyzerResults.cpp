@@ -141,15 +141,7 @@ void HdlcAnalyzerResults::GenControlFieldString( const Frame & frame, DisplayBas
 	char ctlNumStr[ 64 ];
 	AnalyzerHelpers::GetNumberString( frame.mData2, Decimal, 8, ctlNumStr, 64 );
 	
-	char* escStr = 0;
-	if( frame.mFlags & HDLC_ESCAPED_BYTE )
-	{
-		escStr = " (ESCAPED)";
-	}
-	else
-	{
-		escStr = "";
-	}
+	string escStr = GenEscapedString( frame );
 	
 	char* frameTypeStr=0;
 	if( frame.mData2 != 0 )
@@ -173,14 +165,14 @@ void HdlcAnalyzerResults::GenControlFieldString( const Frame & frame, DisplayBas
 	{
 		AddResultString( "C", ctlNumStr );
 		AddResultString( "CTL", ctlNumStr );
-		AddResultString( ss.str().c_str(), byteStr, "]", escStr );
-		AddResultString( ss.str().c_str(), byteStr, "]", frameTypeStr, escStr );
+		AddResultString( ss.str().c_str(), byteStr, "]", escStr.c_str() );
+		AddResultString( ss.str().c_str(), byteStr, "]", frameTypeStr, escStr.c_str() );
 	}
 	
 	ss.str("");
 	ss << "Control" << ctlNumStr << " [";
 	
-	AddResultString( ss.str().c_str(), byteStr, "]", frameTypeStr, escStr );
+	AddResultString( ss.str().c_str(), byteStr, "]", frameTypeStr, escStr.c_str() );
 }
 
 void HdlcAnalyzerResults::GenFcsFieldString( const Frame & frame, DisplayBase display_base, bool tabular )
