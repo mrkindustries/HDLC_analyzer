@@ -224,10 +224,11 @@ BitState HdlcAnalyzer::BitSyncReadBit()
 			// Check for 0-bit insertion (i.e. line toggle)
 			if( mHdlc->GetSampleOfNextEdge() < currentPos + mSamplesInHalfPeriod )
 			{
-				//mResults->AddMarker( currentPos + mSamplesInHalfPeriod , AnalyzerResults::X, mSettings->mInputChannel );
-			
+				
 				// Advance to the next edge to re-synchronize the analyzer
 				mHdlc->AdvanceToNextEdge();
+				// Mark the bit-stuffing
+				mResults->AddMarker( mHdlc->GetSampleNumber() , AnalyzerResults::Dot, mSettings->mInputChannel );
 				mHdlc->Advance( mSamplesInHalfPeriod * 0.5 );
 				
 				mPreviousBitState = mHdlc->GetBitState();

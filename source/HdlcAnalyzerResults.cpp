@@ -135,7 +135,7 @@ void HdlcAnalyzerResults::GenInformationFieldString( const Frame & frame, const 
 
 void HdlcAnalyzerResults::GenControlFieldString( const Frame & frame, DisplayBase display_base, bool tabular )
 {
-	char byteStr[ 65 ];
+	char byteStr[ 64 ];
 	AnalyzerHelpers::GetNumberString( frame.mData1, display_base, 8, byteStr, 64 );
 	
 	char ctlNumStr[ 64 ];
@@ -274,11 +274,26 @@ void HdlcAnalyzerResults::GenerateExportFile( const char* file, DisplayBase disp
 
 	U64 triggerSample = mAnalyzer->GetTriggerSample();
 	U32 sampleRate = mAnalyzer->GetSampleRate();
+	
+	const char* sepChar = " ";
+	
+	U8 fcsBits=0;
+	switch( mSettings->mHdlcFcs )
+	{
+		case HDLC_CRC8: fcsBits = 8; break;
+		case HDLC_CRC16: fcsBits = 16; break;
+		case HDLC_CRC32: fcsBits = 32; break;
+	}
 
 	// TODO: Show type of frame (in control.mData2)
-	fileStream << "Time[s],Address,Control,HCS,Information,FCS" << endl;
+	fileStream << "Time[s],Address,Control,";
+	if( mSettings->mWithHcsField )
+	{
+		fileStream << "HCS,";
+	}
+	fileStream << "Information,FCS" << endl;
 	
-	char escapeStr[5];
+	char escapeStr[ 5 ];
 	AnalyzerHelpers::GetNumberString( HDLC_ESCAPE_SEQ_VALUE, display_base, 8, escapeStr, 5 );
 	
 	U64 numFrames = GetNumFrames();
@@ -327,8 +342,8 @@ void HdlcAnalyzerResults::GenerateExportFile( const char* file, DisplayBase disp
 		}
 		
 		// 1)  Time [s]
-		char timeStr[128];
-		AnalyzerHelpers::GetTimeString( firstAddressFrame.mStartingSampleInclusive, triggerSample, sampleRate, timeStr, 128 );
+		char timeStr[ 64 ];
+		AnalyzerHelpers::GetTimeString( firstAddressFrame.mStartingSampleInclusive, triggerSample, sampleRate, timeStr, 64 );
 		fileStream << timeStr << ",";
 		
 		// 2) Address Field
@@ -341,7 +356,7 @@ void HdlcAnalyzerResults::GenerateExportFile( const char* file, DisplayBase disp
 				continue;
 			}
 			
-			char addressStr[64];
+			char addressStr[ 64 ];
 			AnalyzerHelpers::GetNumberString( firstAddressFrame.mData1, display_base, 8, addressStr, 64 );
 			fileStream << EscapeByteStr( firstAddressFrame ) << addressStr << ",";
 		}
@@ -367,9 +382,9 @@ void HdlcAnalyzerResults::GenerateExportFile( const char* file, DisplayBase disp
 
 				bool endOfAddress = ( ( nextAddress.mData1 & 0x01 ) == 0 );
 				
-				char addressStr[64];
+				char addressStr[ 64 ];
 				AnalyzerHelpers::GetNumberString( nextAddress.mData1, display_base, 8, addressStr, 64 );
-				string sep = ( endOfAddress && nextAddress.mData2 == 0 ) ? string() : string("*");
+				string sep = ( endOfAddress && nextAddress.mData2 == 0 ) ? string() : string(sepChar);
 				fileStream  << sep << EscapeByteStr( nextAddress ) << addressStr;
 				
 				if( endOfAddress ) // no more bytes of address?
@@ -432,9 +447,9 @@ void HdlcAnalyzerResults::GenerateExportFile( const char* file, DisplayBase disp
 				isUFrame = HdlcAnalyzer::GetFrameType( controlFrame.mData1 ) == HDLC_U_FRAME;
 			}
 			
-			char controlStr[64];
+			char controlStr[ 64 ];
 			AnalyzerHelpers::GetNumberString( controlFrame.mData1, display_base, 8, controlStr, 64 );
-			string sep = ( isUFrame || mSettings->mHdlcControl == HDLC_BASIC_CONTROL_FIELD ) ? string() : string("*") ;
+			string sep = ( isUFrame || mSettings->mHdlcControl == HDLC_BASIC_CONTROL_FIELD ) ? string() : string(sepChar) ;
 			fileStream << sep.c_str() << EscapeByteStr( controlFrame ) << controlStr;
 						
 			if( i == 0 && isUFrame )
@@ -473,8 +488,8 @@ void HdlcAnalyzerResults::GenerateExportFile( const char* file, DisplayBase disp
 					fileStream << "," << endl;
 					continue;
 				}
-				char hcsStr[128];
-				AnalyzerHelpers::GetNumberString( hcsFrame.mData1, display_base, 32, hcsStr, 128 );
+				char hcsStr[ 128 ];
+				AnalyzerHelpers::GetNumberString( hcsFrame.mData1, display_base, fcsBits, hcsStr, 128 );
 				fileStream << hcsStr << ",";
 			}
 			
@@ -485,10 +500,6 @@ void HdlcAnalyzerResults::GenerateExportFile( const char* file, DisplayBase disp
 				return; 
 			}
 			
-		}
-		else
-		{
-			fileStream << ",";
 		}
 		
 		// 5) Information Fields
@@ -514,9 +525,9 @@ void HdlcAnalyzerResults::GenerateExportFile( const char* file, DisplayBase disp
 			// Check for info byte
 			if( infoFrame.mType == HDLC_FIELD_INFORMATION ) // ERROR
 			{
-				char infoByteStr[64];
+				char infoByteStr[ 64 ];
 				AnalyzerHelpers::GetNumberString( infoFrame.mData1, display_base, 8, infoByteStr, 64 );
-				fileStream << "*" << EscapeByteStr( infoFrame ) << infoByteStr;
+				fileStream << sepChar << EscapeByteStr( infoFrame ) << infoByteStr;
 				frameNumber++; 
 				if( frameNumber >= numFrames ) 
 				{ 
@@ -544,8 +555,8 @@ void HdlcAnalyzerResults::GenerateExportFile( const char* file, DisplayBase disp
 		}
 		else // HDLC_FIELD_FCS Frame
 		{
-			char fcsStr[64];
-			AnalyzerHelpers::GetNumberString( fcsFrame.mData1, display_base, 32, fcsStr, 64 );
+			char fcsStr[ 128 ];
+			AnalyzerHelpers::GetNumberString( fcsFrame.mData1, display_base, fcsBits, fcsStr, 128 );
 			fileStream << fcsStr << endl;
 		}
 		
