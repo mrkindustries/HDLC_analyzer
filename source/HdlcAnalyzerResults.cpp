@@ -285,7 +285,6 @@ void HdlcAnalyzerResults::GenerateExportFile( const char* file, DisplayBase disp
 		case HDLC_CRC32: fcsBits = 32; break;
 	}
 
-	// TODO: Show type of frame (in control.mData2)
 	fileStream << "Time[s],Address,Control,";
 	if( mSettings->mWithHcsField )
 	{

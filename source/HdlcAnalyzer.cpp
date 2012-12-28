@@ -3,8 +3,7 @@
 #include <AnalyzerChannelData.h>
 #include <AnalyzerHelpers.h>
 #include <iostream>
-
-// TODO: Adjust AbortComing() and FlagComing() with REAL DATA
+#include <algorithm>
 
 using namespace std;
 
@@ -32,7 +31,6 @@ void HdlcAnalyzer::SetupAnalyzer()
 	mSampleRateHz = GetSampleRate();
 	mSamplesInHalfPeriod = U64( ( mSampleRateHz * halfPeriod ) / 1000000.0 );
 	mSamplesInAFlag = mSamplesInHalfPeriod * 7;
-	mSamplesIn7Bits = mSamplesInHalfPeriod * 7;	
 	mSamplesIn8Bits = mSamplesInHalfPeriod * 8;
 	
 	mPreviousBitState = mHdlc->GetBitState();
@@ -261,15 +259,12 @@ BitState HdlcAnalyzer::BitSyncReadBit()
 
 bool HdlcAnalyzer::FlagComing()
 {
-	// TODO: check here if tolerance
 	return !mHdlc->WouldAdvancingCauseTransition( mSamplesInAFlag - mSamplesInHalfPeriod * 0.5 ) &&
 		   mHdlc->WouldAdvancingCauseTransition( mSamplesInAFlag + mSamplesInHalfPeriod * 0.5 );
 }
 
 bool HdlcAnalyzer::AbortComing()
 {
-	// At least 7 bits in 1...
-	// TODO: check here if tolerance
 	return !mHdlc->WouldAdvancingCauseTransition( mSamplesInAFlag + mSamplesInHalfPeriod * 0.5 );
 }
 
@@ -434,13 +429,12 @@ void HdlcAnalyzer::ProcessControlField()
 		mCurrentField = HDLC_FIELD_BASIC_CONTROL;
 		HdlcByte controlByte = ReadByte(); if( mAbortFrame ) { return; }
 		
-		HdlcFrameType frameType = GetFrameType( controlByte.value );
-		
 		U8 flag = ( controlByte.escaped ) ? HDLC_ESCAPED_BYTE : 0;
 		Frame frame = CreateFrame( HDLC_FIELD_BASIC_CONTROL, controlByte.startSample, 
-								   controlByte.endSample, controlByte.value, frameType, flag );
+ 								   controlByte.endSample, controlByte.value, 0, flag );
 		mResults->AddFrame( frame );
 		
+		HdlcFrameType frameType = GetFrameType( controlByte.value );
 		mCurrentFrameIsSFrame = ( frameType == HDLC_S_FRAME );
 		
 	}
@@ -679,14 +673,19 @@ void HdlcAnalyzer::ProcessFcsField( const vector<HdlcByte> & fcs, HdlcCrcField c
 		}
 	}
 	
-	/*
-	cerr << "CRC calculated over: ";
-	for(U32 i=0; i < mCurrentFrameBytes.size(); ++i)
+	cerr << "CRC read: ";
+	for(U32 i=0; i < readFcs.size(); ++i)
 	{
-		cerr << int(mCurrentFrameBytes.at(i)) << " ";
+		cerr << int(readFcs.at(i)) << " ";
 	}
 	cerr << endl;
-	*/
+	
+	cerr << "CRC calculated: ";
+	for(U32 i=0; i < calculatedFcs.size(); ++i)
+	{
+		cerr << int(calculatedFcs.at(i)) << " ";
+	}
+	cerr << endl;
 	
 	HdlcFieldType frameType = ( crcFieldType == HDLC_CRC_HCS ) ? HDLC_FIELD_HCS : HDLC_FIELD_FCS;
 	Frame frame = CreateFrame( frameType, fcs.front().startSample, fcs.back().endSample, 

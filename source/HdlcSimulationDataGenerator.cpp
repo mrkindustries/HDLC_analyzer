@@ -4,6 +4,7 @@
 #include <cstdlib>
 #include <iostream>
 #include <iomanip>
+#include <algorithm>
 
 HdlcSimulationDataGenerator::HdlcSimulationDataGenerator()
 {

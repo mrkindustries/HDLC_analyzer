@@ -75,8 +75,6 @@ protected:
 	U32 mSampleRateHz;
 	U64 mSamplesInHalfPeriod;
 	U64 mSamplesInAFlag;
-	
-	U32 mSamplesIn7Bits;
 	U32 mSamplesIn8Bits;
 	
 	vector<U8> mCurrentFrameBytes;
@@ -90,8 +88,6 @@ protected:
 	HdlcFieldType mCurrentField;
 	Frame mAbortFrameToEmit;
 	Frame mEndFlagFrameToEmit;
-	
-	bool mIdleLine;
 	
 	HdlcSimulationDataGenerator mSimulationDataGenerator;
 	bool mSimulationInitilized;

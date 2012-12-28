@@ -1,8 +1,6 @@
 #include "HdlcAnalyzerSettings.h"
 #include <AnalyzerHelpers.h>
 
-// TODO: test user interface!
-
 HdlcAnalyzerSettings::HdlcAnalyzerSettings()
 :	mInputChannel( UNDEFINED_CHANNEL ),
 	mBitRate( 2000000 ),
