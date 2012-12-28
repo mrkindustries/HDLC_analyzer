@@ -27,9 +27,8 @@ void HdlcAnalyzer::SetupAnalyzer()
 	mResults->AddChannelBubblesWillAppearOn( mSettings->mInputChannel );
 	mHdlc = GetAnalyzerChannelData( mSettings->mInputChannel );
 
-	double halfPeriod = ( 1.0 / double( mSettings->mBitRate ) ) * 1000000.0;
 	mSampleRateHz = GetSampleRate();
-	mSamplesInHalfPeriod = U64( ( mSampleRateHz * halfPeriod ) / 1000000.0 );
+	mSamplesInHalfPeriod = U64( mSampleRateHz / double( mSettings->mBitRate ) );
 	mSamplesInAFlag = mSamplesInHalfPeriod * 7;
 	mSamplesIn8Bits = mSamplesInHalfPeriod * 8;
 	

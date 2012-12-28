@@ -26,8 +26,7 @@ void HdlcSimulationDataGenerator::Initialize( U32 simulation_sample_rate, HdlcAn
 	// Initialize rng seed 
 	srand( time( NULL ) );
 	
-	double halfPeriod = (1.0 / double( mSettings->mBitRate ) ) * 1000000.0; 	// half period in useconds.
-	mSamplesInHalfPeriod = U64( ( mSimulationSampleRateHz * halfPeriod ) / 1000000.0 );		// number of samples in a half period.
+	mSamplesInHalfPeriod = U64( simulation_sample_rate / double( mSettings->mBitRate ) );
 	mSamplesInAFlag = mSamplesInHalfPeriod * 7;
 	
 	mHdlcSimulationData.Advance( mSamplesInHalfPeriod * 8 );	 					// Advance 4 periods
