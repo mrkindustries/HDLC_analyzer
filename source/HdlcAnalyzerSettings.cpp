@@ -1,11 +1,9 @@
 #include "HdlcAnalyzerSettings.h"
 #include <AnalyzerHelpers.h>
 
-// TODO: test user interface!
-
 HdlcAnalyzerSettings::HdlcAnalyzerSettings()
 :	mInputChannel( UNDEFINED_CHANNEL ),
-	mBitRate( 1500 ),
+	mBitRate( 2000000 ),
 	mTransmissionMode( HDLC_TRANSMISSION_BIT_SYNC ),
 	mHdlcAddr( HDLC_BASIC_ADDRESS_FIELD ),
 	mHdlcControl( HDLC_BASIC_CONTROL_FIELD ),
@@ -83,6 +81,11 @@ HdlcAnalyzerSettings::HdlcAnalyzerSettings()
 
 HdlcAnalyzerSettings::~HdlcAnalyzerSettings()
 {
+}
+
+U8 HdlcAnalyzerSettings::Bit5Inv( U8 value ) 
+{
+	return value ^ 0x20;
 }
 
 bool HdlcAnalyzerSettings::SetSettingsFromInterfaces()

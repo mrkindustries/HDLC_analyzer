@@ -14,7 +14,7 @@
 // Inner frames types of HDLC frame (address, control, data, fcs, etc)
 enum HdlcFieldType { HDLC_FIELD_FLAG = 0, HDLC_FIELD_BASIC_ADDRESS, HDLC_FIELD_EXTENDED_ADDRESS, 
 					 HDLC_FIELD_BASIC_CONTROL, HDLC_FIELD_EXTENDED_CONTROL, 
-					 HDLC_FIELD_INFORMATION, HDLC_FIELD_FCS, HDLC_ESCAPE_SEQ, HDLC_ABORT_SEQ, HDLC_FIELD_HCS };
+					 HDLC_FIELD_INFORMATION, HDLC_FIELD_FCS, HDLC_ABORT_SEQ, HDLC_FIELD_HCS };
 // Transmission mode (bit stuffing or byte stuffing)
 enum HdlcTransmissionModeType { HDLC_TRANSMISSION_BIT_SYNC = 0, HDLC_TRANSMISSION_BYTE_ASYNC };
 // Types of HDLC frames (Information, Supervisory and Unnumbered)
@@ -37,6 +37,8 @@ enum HdlcFlagType { HDLC_FLAG_START = 0, HDLC_FLAG_END = 1, HDLC_FLAG_FILL = 2 }
 #define HDLC_FLAG_VALUE 0x7E
 #define HDLC_ESCAPE_SEQ_VALUE 0x7D
 #define HDLC_FILL_VALUE 0xFF
+// For Frame::mFlag
+#define HDLC_ESCAPED_BYTE ( 1 << 0 )
 
 /////////////////////////////////////
 
@@ -50,6 +52,8 @@ public:
 	void UpdateInterfacesFromSettings();
 	virtual void LoadSettings( const char* settings );
 	virtual const char* SaveSettings();
+	
+	static U8 Bit5Inv( U8 value );
 
 	Channel mInputChannel;
 	U32 mBitRate;

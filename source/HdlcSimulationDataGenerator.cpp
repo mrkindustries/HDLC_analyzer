@@ -4,6 +4,7 @@
 #include <cstdlib>
 #include <iostream>
 #include <iomanip>
+#include <algorithm>
 
 HdlcSimulationDataGenerator::HdlcSimulationDataGenerator()
 {
@@ -24,11 +25,11 @@ void HdlcSimulationDataGenerator::Initialize( U32 simulation_sample_rate, HdlcAn
 	
 	// Initialize rng seed 
 	srand( time( NULL ) );
+
+	mSamplesInHalfPeriod = U64( simulation_sample_rate / double( mSettings->mBitRate ) );
+	mSamplesInAFlag = mSamplesInHalfPeriod * 7;
 	
-	double halfPeriod = (1.0 / double( mSettings->mBitRate * 2 ) ) * 1000000.0; 	// half period in useconds.
-	mSamplesInHalfPeriod = USecsToSamples( halfPeriod );		 					// number of samples in a half period.
-	
-	mHdlcSimulationData.Advance( mSamplesInHalfPeriod * 8 );	 					// Advance 4 periods
+	mHdlcSimulationData.Advance( mSamplesInHalfPeriod * 8 ); // Advance 4 periods
 	GenerateAbortFramesIndexes();
 	mAbortByte = 0;
 	mFrameNumber = 0;	
@@ -43,11 +44,6 @@ void HdlcSimulationDataGenerator::Initialize( U32 simulation_sample_rate, HdlcAn
 	mFrameTypes[ 0 ] = HDLC_I_FRAME; 
 	mFrameTypes[ 1 ] = HDLC_S_FRAME; 
 	mFrameTypes[ 2 ] = HDLC_U_FRAME;
-}
-
-U64 HdlcSimulationDataGenerator::USecsToSamples( U64 us ) const
-{
-	return ( mSimulationSampleRateHz * us ) / 1000000;
 }
 
 void HdlcSimulationDataGenerator::GenerateAbortFramesIndexes()
@@ -147,12 +143,17 @@ vector<U8> HdlcSimulationDataGenerator::GenControlField( HdlcFrameType frameType
 	U8 ctrl;
 	switch( frameType ) 
 	{
+		case HDLC_I_FRAME: ctrl = ( value & 0xFE ) | U8( frameType ); break; 
+		case HDLC_S_FRAME: ctrl = ( value & 0xFC ) | U8( frameType ); break;
+		case HDLC_U_FRAME: ctrl = value | U8( HDLC_U_FRAME );
+	}
+
+	switch( frameType ) 
+	{
 		case HDLC_I_FRAME: 
-			ctrl = ( value & 0xFE ) | U8( frameType );
 		case HDLC_S_FRAME:
 		{
 			// first byte
-			ctrl = ( value & 0xFC ) | U8( frameType );
 			controlRet.push_back( ctrl );
 			switch( controlType ) 
 			{
@@ -178,7 +179,6 @@ vector<U8> HdlcSimulationDataGenerator::GenControlField( HdlcFrameType frameType
 		}
 		case HDLC_U_FRAME: // U frames are always of 8 bits 
 		{
-			ctrl = value | U8( HDLC_U_FRAME );
 			controlRet.push_back( ctrl );
 			break;
 		}
@@ -338,7 +338,7 @@ void HdlcSimulationDataGenerator::CreateFlagBitSeq()
 		mHdlcSimulationData.Transition();
 	}
 	
-	mHdlcSimulationData.Advance( mSamplesInHalfPeriod * 7 );
+	mHdlcSimulationData.Advance( mSamplesInAFlag );
 	mHdlcSimulationData.Transition();
 	
 	if( !mSettings->mSharedZero ) // If not shared zero
@@ -368,6 +368,17 @@ void HdlcSimulationDataGenerator::TransmitByteAsync( const vector<U8> & stream )
 	
 	bool abortFrame = ContainsElement( mFrameNumber );
 	
+	/*
+	cerr << "Frame bytes: ";
+	for( U32 i=0; i < stream.size(); ++i )
+	{
+		const U8 byte = stream[ i ];
+		cerr << int(byte) << " ";
+	}
+	cerr << endl;
+	*/
+	
+	
 	for( U32 i=0; i < stream.size(); ++i )
 	{
 		
@@ -386,11 +397,11 @@ void HdlcSimulationDataGenerator::TransmitByteAsync( const vector<U8> & stream )
 		{
 			case HDLC_FLAG_VALUE: // 0x7E
 				CreateAsyncByte( HDLC_ESCAPE_SEQ_VALUE );			// 7D escape
-				CreateAsyncByte( Bit5Inv(HDLC_FLAG_VALUE) );		// 5E
+				CreateAsyncByte( HdlcAnalyzerSettings::Bit5Inv( HDLC_FLAG_VALUE ) );		// 5E
 				break;
 			case HDLC_ESCAPE_SEQ_VALUE: // 0x7D
 				CreateAsyncByte( HDLC_ESCAPE_SEQ_VALUE );			// 7D escape
-				CreateAsyncByte( Bit5Inv(HDLC_ESCAPE_SEQ_VALUE) );	// 5D
+				CreateAsyncByte( HdlcAnalyzerSettings::Bit5Inv( HDLC_ESCAPE_SEQ_VALUE ) );	// 5D
 				break;
 			default:
 				CreateAsyncByte( byte );							// normal byte
@@ -625,9 +636,4 @@ vector<U8> HdlcSimulationDataGenerator::Crc32( const vector<U8> & stream, const 
 	vector<U8> crc32Ret = CrcDivision( result, divisor, 32 );
 	return crc32Ret;
 
-}
-
-U8 HdlcSimulationDataGenerator::Bit5Inv( U8 value ) 
-{
-	return value ^ 0x20;
 }
