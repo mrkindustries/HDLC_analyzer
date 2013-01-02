@@ -151,12 +151,21 @@ void HdlcAnalyzer::BitSyncProcessFlags()
 			
 			flags.push_back(bs);
 			
-			if( !mSettings->mSharedZero )
-			{
-				mHdlc->Advance( mSamplesInHalfPeriod * 0.5 );
-				mPreviousBitState = mHdlc->GetBitState();
-				mHdlc->Advance( mSamplesInHalfPeriod * 0.5 );
-			}
+      if( !mSettings->mSharedZero )
+      {
+        if( mHdlc->WouldAdvancingCauseTransition( mSamplesInHalfPeriod * 1.5 ) )
+        {
+          mHdlc->Advance( mSamplesInHalfPeriod * 0.5 );
+          mPreviousBitState = mHdlc->GetBitState();
+          mHdlc->AdvanceToNextEdge();
+        }
+        else
+        {
+          mHdlc->Advance( mSamplesInHalfPeriod * 0.5 );
+          mPreviousBitState = mHdlc->GetBitState();
+          mHdlc->Advance( mSamplesInHalfPeriod * 0.5 );
+        }
+      }
 			
 			flagEncountered = true;
 		}
@@ -196,9 +205,15 @@ void HdlcAnalyzer::BitSyncProcessFlags()
 // Read bit with bit-stuffing
 BitState HdlcAnalyzer::BitSyncReadBit()
 {
+  // Re-sync
+  if( mHdlc->GetSampleOfNextEdge() < mHdlc->GetSampleNumber() + mSamplesInHalfPeriod * 0.25 )
+  {
+    mHdlc->AdvanceToNextEdge();
+  }
+  
 	BitState ret;
-	
-	mHdlc->Advance( mSamplesInHalfPeriod * 0.5 );
+  
+  mHdlc->Advance( mSamplesInHalfPeriod * 0.5 );
 	BitState bit = mHdlc->GetBitState(); // sample the bit
 	
 	if( bit == mPreviousBitState )
@@ -242,10 +257,16 @@ BitState HdlcAnalyzer::BitSyncReadBit()
 	}
 	
 	mHdlc->Advance( mSamplesInHalfPeriod * 0.5 );
+  
+	// Re-sync
+  if( mHdlc->GetSampleOfNextEdge() < mHdlc->GetSampleNumber() + mSamplesInHalfPeriod * 0.25 )
+  {
+    mHdlc->AdvanceToNextEdge();
+  }
+  
 	return ret;
 }
 
-// TODO: Check tolerance here!
 bool HdlcAnalyzer::FlagComing()
 {
 	return !mHdlc->WouldAdvancingCauseTransition( mSamplesInAFlag - mSamplesInHalfPeriod  * 0.5 ) &&
@@ -604,95 +625,80 @@ bool HdlcAnalyzer::CrcOk( const vector<U8> & remainder ) const
 
 void HdlcAnalyzer::ProcessFcsField( const vector<HdlcByte> & fcs, HdlcCrcField crcFieldType )
 {
-	vector<U8> calculatedFcs;
-	vector<U8> readFcs = HdlcBytesToVectorBytes( fcs );
-	
-	switch( mSettings->mHdlcFcs )
-	{
-		case HDLC_CRC8:
-		{
-			if( crcFieldType == HDLC_CRC_FCS )
-			{
-				if( !mCurrentFrameBytes.empty() )
-				{
-					mCurrentFrameBytes.pop_back();
-				}
-				calculatedFcs = HdlcSimulationDataGenerator::Crc8( mCurrentFrameBytes, readFcs );
-			}
-			else
-			{
-				calculatedFcs = HdlcSimulationDataGenerator::Crc8( mCurrentFrameBytesForHCS, readFcs );
-			}
-			break;
-		}
-		case HDLC_CRC16:
-		{
-			if( crcFieldType == HDLC_CRC_FCS )
-			{
-				if( mCurrentFrameBytes.size() >= 2 )
-				{
-					mCurrentFrameBytes.erase( mCurrentFrameBytes.end()-2, mCurrentFrameBytes.end() );
-				}
-				calculatedFcs = HdlcSimulationDataGenerator::Crc16( mCurrentFrameBytes, readFcs );
-			}
-			else
-			{
-				calculatedFcs = HdlcSimulationDataGenerator::Crc16( mCurrentFrameBytesForHCS, readFcs );
-			}
-			break;
-		}
-		case HDLC_CRC32:
-		{
-			if( crcFieldType == HDLC_CRC_FCS )
-			{
-				if( mCurrentFrameBytes.size() >= 4 )
-				{
-					mCurrentFrameBytes.erase( mCurrentFrameBytes.end()-4, mCurrentFrameBytes.end() );
-				}
-				calculatedFcs = HdlcSimulationDataGenerator::Crc32( mCurrentFrameBytes, readFcs );
-			}
-			else
-			{
-				calculatedFcs = HdlcSimulationDataGenerator::Crc32( mCurrentFrameBytesForHCS, readFcs );
-			}
-			break;
-		}
-	}
-	
-	/*
-	cerr << "CRC read: ";
-	for(U32 i=0; i < readFcs.size(); ++i)
-	{
-		cerr << int(readFcs.at(i)) << " ";
-	}
-	cerr << endl;
-	
-	cerr << "CRC calculated: ";
-	for(U32 i=0; i < calculatedFcs.size(); ++i)
-	{
-		cerr << int(calculatedFcs.at(i)) << " ";
-	}
-	cerr << endl;
-	*/
-	
-	HdlcFieldType frameType = ( crcFieldType == HDLC_CRC_HCS ) ? HDLC_FIELD_HCS : HDLC_FIELD_FCS;
-	Frame frame = CreateFrame( frameType, fcs.front().startSample, fcs.back().endSample, 
-							  VectorToValue(readFcs), VectorToValue(calculatedFcs) );
-	
-	// Check if crc is ok (i.e. is equal to 0)
-	if( !CrcOk( calculatedFcs ) ) // CRC ok
-	{
-		frame.mFlags = DISPLAY_AS_ERROR_FLAG;
-	}
-	
-	mResults->AddFrame( frame );
-	
-	if( crcFieldType == HDLC_CRC_FCS )
-	{
-		// Put a marker in the end of the HDLC frame
-		mResults->AddMarker( frame.mEndingSampleInclusive, AnalyzerResults::Stop, mSettings->mInputChannel );
-	}
-	
+  vector<U8> calculatedFcs;
+  vector<U8> readFcs = HdlcBytesToVectorBytes( fcs );
+  
+  switch( mSettings->mHdlcFcs )
+  {
+    case HDLC_CRC8:
+    {
+      if( crcFieldType == HDLC_CRC_FCS )
+      {
+        if( !mCurrentFrameBytes.empty() )
+        {
+          mCurrentFrameBytes.pop_back();
+        }
+        calculatedFcs = HdlcSimulationDataGenerator::Crc8( mCurrentFrameBytes );
+      }
+      else
+      {
+        calculatedFcs = HdlcSimulationDataGenerator::Crc8( mCurrentFrameBytesForHCS );
+      }
+      break;
+    }
+    case HDLC_CRC16:
+    {
+      if( crcFieldType == HDLC_CRC_FCS )
+      {
+        if( mCurrentFrameBytes.size() >= 2 )
+        {
+          mCurrentFrameBytes.erase( mCurrentFrameBytes.end()-2, mCurrentFrameBytes.end() );
+        }
+        
+        calculatedFcs = HdlcSimulationDataGenerator::Crc16( mCurrentFrameBytes );
+        
+      }
+      else
+      {
+        calculatedFcs = HdlcSimulationDataGenerator::Crc16( mCurrentFrameBytesForHCS );
+      }
+      break;
+    }
+    case HDLC_CRC32:
+    {
+      if( crcFieldType == HDLC_CRC_FCS )
+      {
+        if( mCurrentFrameBytes.size() >= 4 )
+        {
+          mCurrentFrameBytes.erase( mCurrentFrameBytes.end()-4, mCurrentFrameBytes.end() );
+        }
+        calculatedFcs = HdlcSimulationDataGenerator::Crc32( mCurrentFrameBytes );
+      }
+      else
+      {
+        calculatedFcs = HdlcSimulationDataGenerator::Crc32( mCurrentFrameBytesForHCS );
+      }
+      break;
+    }
+  }
+  
+  HdlcFieldType frameType = ( crcFieldType == HDLC_CRC_HCS ) ? HDLC_FIELD_HCS : HDLC_FIELD_FCS;
+  Frame frame = CreateFrame( frameType, fcs.front().startSample, fcs.back().endSample, 
+                VectorToValue(readFcs), VectorToValue(calculatedFcs) );
+  
+  if( calculatedFcs != readFcs )
+  {
+    frame.mFlags = DISPLAY_AS_ERROR_FLAG;
+  }
+  
+  mResults->AddFrame( frame );
+  
+  if( crcFieldType == HDLC_CRC_FCS )
+  {
+    // Put a marker in the end of the HDLC frame
+    mResults->AddMarker( frame.mEndingSampleInclusive, AnalyzerResults::Stop, mSettings->mInputChannel );
+  }
+  
 }
 
 HdlcByte HdlcAnalyzer::ReadByte()
