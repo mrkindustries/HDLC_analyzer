@@ -554,19 +554,21 @@ vector<U8> HdlcSimulationDataGenerator::Crc8( const vector<U8> & stream )
 vector<U8> HdlcSimulationDataGenerator::Crc16( const vector<U8> & stream )
 {
 	vector<U8> result = stream;
-	// Append 16 0-bits
+    
+  // Append 16 0-bits
 	result.push_back( 0x00 );
 	result.push_back( 0x00 );
 	
-	// ISO/IEC 13239:2002(E) page 14
+  // ISO/IEC 13239:2002(E) page 14
 	// CRC16 Divisor (17 bits) - x**16 + x**12 + x**5 + 1 (0x1021)
 	vector<U8> divisor;
 	divisor.push_back( 0x88 );
 	divisor.push_back( 0x10 );
 	divisor.push_back( 0x80 );
-	
-	vector<U8> crc16Ret = CrcDivision( result, divisor, 16 );
-	return crc16Ret;
+  
+  vector<U8> crc16Ret = CrcDivision( result, divisor, 16 );
+  
+  return crc16Ret;
 }
 
 vector<U8> HdlcSimulationDataGenerator::Crc32( const vector<U8> & stream )

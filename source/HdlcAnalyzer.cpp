@@ -38,7 +38,39 @@ void HdlcAnalyzer::SetupAnalyzer()
 	mReadingFrame = false;
 	mAbortFrame = false;
 	mCurrentFrameIsSFrame = false;
+  mLastFrameEndSample = 0;
+  mFoundEndFlag = false;
 	
+}
+
+bool HdlcAnalyzer::FrameComparison(const Frame & frame0, const Frame & frame1)
+{
+  return frame0.mStartingSampleInclusive < frame1.mStartingSampleInclusive;
+}
+
+void HdlcAnalyzer::CommitFrames()
+{
+
+  if(mResultFrames.empty())
+  {
+    return;
+  }
+  
+  // Commit the First Frame
+  Frame lastFrame = mResultFrames.at( 0 );
+  mResults->AddFrame( lastFrame );
+
+  // Commit the rest of the frames avoiding overlapping sample endpoints
+  for(U32 i=1; i < mResultFrames.size(); ++i)
+  {
+    Frame frame = mResultFrames.at(i);
+    if( frame.mStartingSampleInclusive < lastFrame.mEndingSampleInclusive )
+    {
+      frame.mStartingSampleInclusive += lastFrame.mEndingSampleInclusive - frame.mStartingSampleInclusive + 1;
+    }
+    mResults->AddFrame( frame );
+    lastFrame = frame;
+  }
 }
 
 void HdlcAnalyzer::WorkerThread()
@@ -55,10 +87,16 @@ void HdlcAnalyzer::WorkerThread()
 	for( ; ; )
 	{
 		ProcessHDLCFrame();
-		
+
+    // Sort and commit the frames of the HDLC Frame
+    sort(mResultFrames.begin(), mResultFrames.end(), FrameComparison);
+    CommitFrames();
+    mResultFrames.clear();
+    
 		mResults->CommitResults();
 		ReportProgress( mHdlc->GetSampleNumber() );
 		CheckIfThreadShouldExit();
+    
 	}
 	
 }
@@ -81,8 +119,8 @@ void HdlcAnalyzer::ProcessHDLCFrame()
 	
 	if( mAbortFrame ) // The frame has been aborted at some point
 	{
-		mResults->AddMarker( mHdlc->GetSampleNumber(), AnalyzerResults::ErrorX, mSettings->mInputChannel );
-		mResults->AddFrame( mAbortFrameToEmit );
+    mResults->AddMarker( mHdlc->GetSampleNumber(), AnalyzerResults::ErrorX, mSettings->mInputChannel );
+		AddFrameToResults( mAbortFrameToEmit );
 		if( mSettings->mTransmissionMode == HDLC_TRANSMISSION_BIT_SYNC )
 		{
 			// After abortion, synchronize again
@@ -91,7 +129,7 @@ void HdlcAnalyzer::ProcessHDLCFrame()
 	}
 	else // emit the end flag
 	{
-		mResults->AddFrame( mEndFlagFrameToEmit );
+		AddFrameToResults( mEndFlagFrameToEmit );
 	}
 	
 	mReadingFrame = false;
@@ -132,7 +170,7 @@ void HdlcAnalyzer::BitSyncProcessFlags()
 			{	
 				Frame frame = CreateFrame( HDLC_FIELD_FLAG, flags.at(i).startSample, 
 										flags.at(i).endSample, HDLC_FLAG_FILL );
-				mResults->AddFrame( frame );
+				AddFrameToResults( frame );
 			}
 			flags.clear();
 			mHdlc->AdvanceToNextEdge();
@@ -197,7 +235,7 @@ void HdlcAnalyzer::BitSyncProcessFlags()
 		{
 			frame.mData1 = HDLC_FLAG_START;
 		}
-		mResults->AddFrame( frame );
+		AddFrameToResults( frame );
 	}
 	
 }
@@ -206,7 +244,7 @@ void HdlcAnalyzer::BitSyncProcessFlags()
 BitState HdlcAnalyzer::BitSyncReadBit()
 {
   // Re-sync
-  if( mHdlc->GetSampleOfNextEdge() < mHdlc->GetSampleNumber() + mSamplesInHalfPeriod * 0.25 )
+  if( mHdlc->GetSampleOfNextEdge() < mHdlc->GetSampleNumber() + mSamplesInHalfPeriod * 0.20 )
   {
     mHdlc->AdvanceToNextEdge();
   }
@@ -259,7 +297,7 @@ BitState HdlcAnalyzer::BitSyncReadBit()
 	mHdlc->Advance( mSamplesInHalfPeriod * 0.5 );
   
 	// Re-sync
-  if( mHdlc->GetSampleOfNextEdge() < mHdlc->GetSampleNumber() + mSamplesInHalfPeriod * 0.25 )
+  if( mHdlc->GetSampleOfNextEdge() < mHdlc->GetSampleNumber() + mSamplesInHalfPeriod * 0.20 )
   {
     mHdlc->AdvanceToNextEdge();
   }
@@ -287,7 +325,7 @@ HdlcByte HdlcAnalyzer::BitSyncReadByte()
 			mHdlc->Advance( mSamplesIn8Bits );
 			U64 endSample = mHdlc->GetSampleNumber();
 			
-			mAbortFrameToEmit = CreateFrame( HDLC_ABORT_SEQ, startSample, endSample );
+			mAbortFrameToEmit = CreateFrame( HDLC_ABORT_SEQ, startSample + mSamplesInHalfPeriod, endSample );
 			
 			mAbortFrame = true;
 			return HdlcByte();
@@ -298,6 +336,7 @@ HdlcByte HdlcAnalyzer::BitSyncReadByte()
 		U64 startSample = mHdlc->GetSampleNumber();
 		mHdlc->AdvanceToNextEdge();
 		U64 endSample = mHdlc->GetSampleNumber();
+    mFoundEndFlag = true;
 		HdlcByte bs = { startSample, endSample, HDLC_FLAG_VALUE };
 		return bs;
 	}
@@ -376,7 +415,7 @@ void HdlcAnalyzer::GenerateFlagsFrames( vector<HdlcByte> readBytes )
 			frame.mData1 = HDLC_FLAG_FILL;
 		}
 		
-		mResults->AddFrame( frame );
+		AddFrameToResults( frame );
 	}	
 }
 
@@ -392,7 +431,7 @@ void HdlcAnalyzer::ProcessAddressField( HdlcByte byteAfterFlag )
 		U8 flag = ( byteAfterFlag.escaped ) ? HDLC_ESCAPED_BYTE : 0;
 		Frame frame = CreateFrame( HDLC_FIELD_BASIC_ADDRESS, byteAfterFlag.startSample, 
 								  byteAfterFlag.endSample, byteAfterFlag.value, 0, flag );
-		mResults->AddFrame( frame );
+		AddFrameToResults( frame );
 		
 		// Put a marker in the beggining of the HDLC frame
 		mResults->AddMarker( byteAfterFlag.startSample, AnalyzerResults::Start, mSettings->mInputChannel );
@@ -409,7 +448,7 @@ void HdlcAnalyzer::ProcessAddressField( HdlcByte byteAfterFlag )
 			U8 flag = ( addressByte.escaped ) ? HDLC_ESCAPED_BYTE : 0;
 			Frame frame = CreateFrame( HDLC_FIELD_EXTENDED_ADDRESS, addressByte.startSample, 
 									  addressByte.endSample, addressByte.value, i++, flag );
-			mResults->AddFrame( frame );
+			AddFrameToResults( frame );
 
 			U8 lsbBit = addressByte.value & 0x01;
 			if( !lsbBit ) // End of Extended Address Field?
@@ -439,7 +478,7 @@ void HdlcAnalyzer::ProcessControlField()
 		U8 flag = ( controlByte.escaped ) ? HDLC_ESCAPED_BYTE : 0;
 		Frame frame = CreateFrame( HDLC_FIELD_BASIC_CONTROL, controlByte.startSample, 
  								   controlByte.endSample, controlByte.value, 0, flag );
-		mResults->AddFrame( frame );
+		AddFrameToResults( frame );
 		
 		HdlcFrameType frameType = GetFrameType( controlByte.value );
 		mCurrentFrameIsSFrame = ( frameType == HDLC_S_FRAME );
@@ -456,7 +495,7 @@ void HdlcAnalyzer::ProcessControlField()
 		
 		Frame frame0 = CreateFrame( HDLC_FIELD_EXTENDED_CONTROL, byte0.startSample, byte0.endSample, 
 									byte0.value, 0, flag );
-		mResults->AddFrame( frame0 );
+		AddFrameToResults( frame0 );
 		
 		mCurrentFrameIsSFrame = ( frameType == HDLC_S_FRAME );
 		
@@ -475,7 +514,7 @@ void HdlcAnalyzer::ProcessControlField()
 				U8 flag = ( byte.escaped ) ? HDLC_ESCAPED_BYTE : 0;
 				Frame frame = CreateFrame( HDLC_FIELD_EXTENDED_CONTROL, byte.startSample, 
 										byte.endSample, byte.value, i, flag );
-				mResults->AddFrame( frame );						
+				AddFrameToResults( frame );						
 			}
 					
 		}
@@ -490,10 +529,11 @@ vector<HdlcByte> HdlcAnalyzer::ReadProcessAndFcsField()
 	for( ; ; )
 	{
 		HdlcByte asyncByte = ReadByte(); if( mAbortFrame ) { return infoAndFcs; }
-		if( asyncByte.value == HDLC_FLAG_VALUE ) // End of frame found
+		if( asyncByte.value == HDLC_FLAG_VALUE && mFoundEndFlag ) // End of frame found
 		{
 			mEndFlagFrameToEmit = CreateFrame( HDLC_FIELD_FLAG, asyncByte.startSample, 
 										asyncByte.endSample, HDLC_FLAG_END );
+      mFoundEndFlag = false;
 			break;
 		}
 		else  // information or fcs byte
@@ -607,13 +647,18 @@ void HdlcAnalyzer::ProcessInformationField( const vector<HdlcByte> & information
 		U8 flag = ( byte.escaped ) ? HDLC_ESCAPED_BYTE : 0;
 		Frame frame = CreateFrame( HDLC_FIELD_INFORMATION, byte.startSample, 
 								   byte.endSample, byte.value, i, flag );
-		mResults->AddFrame( frame );
+		AddFrameToResults( frame );
 	}
+}
+
+void HdlcAnalyzer::AddFrameToResults( Frame & frame )
+{
+  mResultFrames.push_back( frame );
 }
 
 bool HdlcAnalyzer::CrcOk( const vector<U8> & remainder ) const
 {
-	for( U32 i=0; i < remainder.size(); ++i )
+  for( U32 i=0; i < remainder.size(); ++i )
 	{
 		if( remainder.at( i ) != 0x00 )
 		{
@@ -691,7 +736,7 @@ void HdlcAnalyzer::ProcessFcsField( const vector<HdlcByte> & fcs, HdlcCrcField c
     frame.mFlags = DISPLAY_AS_ERROR_FLAG;
   }
   
-  mResults->AddFrame( frame );
+  AddFrameToResults( frame );
   
   if( crcFieldType == HDLC_CRC_FCS )
   {

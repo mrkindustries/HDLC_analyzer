@@ -235,6 +235,26 @@ void HdlcAnalyzerResults::GenFcsFieldString( const Frame & frame, DisplayBase di
   
 }
 
+void HdlcAnalyzerResults::GenAbortFieldString( bool tabular )
+{
+  if( !tabular ) 
+  {
+    AddResultString( "AB!" );
+    AddResultString( "ABORT!" );
+  }
+  char* seq = 0;
+  if( mSettings->mTransmissionMode == HDLC_TRANSMISSION_BIT_SYNC )
+  {
+    seq = "(>=7 1-bits)";
+  }
+  else
+  {
+    seq = "(0x7D-0x7F)";
+  }
+  
+  AddResultString( "ABORT SEQUENCE!", seq );
+}
+
 string HdlcAnalyzerResults::EscapeByteStr( const Frame & frame )
 {
 	if( mSettings->mTransmissionMode == HDLC_TRANSMISSION_BYTE_ASYNC && frame.mFlags & HDLC_ESCAPED_BYTE )
