@@ -65,9 +65,13 @@ protected:
 					   U64 mData1=0, U64 mData2=0, U8 mFlags=0 ) const;
 	vector<U8> HdlcBytesToVectorBytes( const vector<HdlcByte> & asyncBytes ) const;
 	U64 VectorToValue( const vector<U8> & v ) const;
+  
+  void AddFrameToResults( Frame & frame );
+  void CommitFrames();
+  static bool FrameComparison(const Frame & frame0, const Frame & frame2);
 	
 protected:
-	
+  
 	std::auto_ptr< HdlcAnalyzerSettings > mSettings;
 	std::auto_ptr< HdlcAnalyzerResults > mResults;
 	AnalyzerChannelData* mHdlc;
@@ -88,6 +92,11 @@ protected:
 	HdlcFieldType mCurrentField;
 	Frame mAbortFrameToEmit;
 	Frame mEndFlagFrameToEmit;
+  bool mFoundEndFlag;
+  
+  U64 mLastFrameEndSample;
+  U8 mLastFrameType;
+  vector<Frame> mResultFrames;
 	
 	HdlcSimulationDataGenerator mSimulationDataGenerator;
 	bool mSimulationInitilized;

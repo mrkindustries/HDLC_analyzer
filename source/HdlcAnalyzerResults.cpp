@@ -177,75 +177,82 @@ void HdlcAnalyzerResults::GenControlFieldString( const Frame & frame, DisplayBas
 
 void HdlcAnalyzerResults::GenFcsFieldString( const Frame & frame, DisplayBase display_base, bool tabular )
 {
-	U32 fcsBits=0;
-	char* crcTypeStr=0;
-	switch( mSettings->mHdlcFcs )
-	{
-		case HDLC_CRC8: fcsBits = 8; crcTypeStr= "8 "; break;
-		case HDLC_CRC16: fcsBits = 16; crcTypeStr= "16"; break;
-		case HDLC_CRC32: fcsBits = 32; crcTypeStr= "32"; break;
-	}
-	
-	char readFcsStr[ 128 ];
-	AnalyzerHelpers::GetNumberString( frame.mData1, display_base, fcsBits, readFcsStr, 128 );
-	
-	stringstream fieldNameStr;
-	if( frame.mFlags & DISPLAY_AS_ERROR_FLAG )
-	{
-		fieldNameStr << "!";
-	}
-	
-	if( frame.mType == HDLC_FIELD_FCS )
-	{
-			fieldNameStr << "FCS CRC" << crcTypeStr;
-	}
-	else
-	{
-			fieldNameStr << "HCS CRC" << crcTypeStr;
-	}
-	
-	if( !tabular )
-	{
-		AddResultString( "CRC" );
-		AddResultString( fieldNameStr.str().c_str() );
-	}
-	
-	if( frame.mFlags & DISPLAY_AS_ERROR_FLAG )
-	{
-		fieldNameStr << " ERROR";
-	}
-	else
-	{
-		fieldNameStr << " OK";
-	}
-	
-	if( !tabular )
-	{
-		AddResultString( fieldNameStr.str().c_str() );
-	}
+  U32 fcsBits=0;
+  char* crcTypeStr=0;
+  switch( mSettings->mHdlcFcs )
+  {
+    case HDLC_CRC8: fcsBits = 8; crcTypeStr= "8 "; break;
+    case HDLC_CRC16: fcsBits = 16; crcTypeStr= "16"; break;
+    case HDLC_CRC32: fcsBits = 32; crcTypeStr= "32"; break;
+  }
+  
+  char readFcsStr[ 128 ];
+  AnalyzerHelpers::GetNumberString( frame.mData1, display_base, fcsBits, readFcsStr, 128 );
+  char calcFcsStr[ 128 ];
+  AnalyzerHelpers::GetNumberString( frame.mData2, display_base, fcsBits, calcFcsStr, 128 );
+  
+  stringstream fieldNameStr;
+  if( frame.mFlags & DISPLAY_AS_ERROR_FLAG )
+  {
+    fieldNameStr << "!";
+  }
+  
+  if( frame.mType == HDLC_FIELD_FCS )
+  {
+      fieldNameStr << "FCS CRC" << crcTypeStr;
+  }
+  else
+  {
+      fieldNameStr << "HCS CRC" << crcTypeStr;
+  }
+  
+  if( !tabular )
+  {
+    AddResultString( "CRC" );
+    AddResultString( fieldNameStr.str().c_str() );
+  }
+  
+  if( frame.mFlags & DISPLAY_AS_ERROR_FLAG )
+  {
+    fieldNameStr << " ERROR";
+  }
+  else
+  {
+    fieldNameStr << " OK";
+  }
+  
+  if( !tabular )
+  {
+    AddResultString( fieldNameStr.str().c_str() );
+  }
+  
+  if( frame.mFlags & DISPLAY_AS_ERROR_FLAG )
+  {
+    fieldNameStr << " - CALC CRC[" << calcFcsStr << "] != READ CRC[" << readFcsStr << "]";
+  }
 
-	AddResultString( fieldNameStr.str().c_str(), "[", readFcsStr, "]" );
-	
+  AddResultString( fieldNameStr.str().c_str()  );
+  
 }
 
 void HdlcAnalyzerResults::GenAbortFieldString( bool tabular )
 {
-	if( !tabular ) 
-	{
-		AddResultString( "AB!" );
-		AddResultString( "ABORT!" );
-	}
-	char* seq = 0;
-	if( mSettings->mTransmissionMode == HDLC_TRANSMISSION_BIT_SYNC )
-	{
-		seq = "(>=7 1-bits)";
-	}
-	else
-	{
-		seq = "(0x7D-0x7F)";
-	}
-	
-	AddResultString( "ABORT SEQUENCE!", seq );
+  if( !tabular ) 
+  {
+    AddResultString( "AB!" );
+    AddResultString( "ABORT!" );
+  }
+  char* seq = 0;
+  if( mSettings->mTransmissionMode == HDLC_TRANSMISSION_BIT_SYNC )
+  {
+    seq = "(>=7 1-bits)";
+  }
+  else
+  {
+    seq = "(0x7D-0x7F)";
+  }
+  
+  AddResultString( "ABORT SEQUENCE!", seq );
 }
 
 string HdlcAnalyzerResults::EscapeByteStr( const Frame & frame )
